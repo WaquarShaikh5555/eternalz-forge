@@ -20,7 +20,7 @@ data class ForgeState(
     val repositories: List<Repository> = emptyList(), val entries: List<Entry> = emptyList(),
     val repo: Repository? = null, val branch: String = "", val path: String = "", val tab: String = "Code", val page: Int = 1,
     val query: String = "", val searchType: String = "repositories", val listFilter: String = "All",
-    val title: String = "", val detail: String = "", val detailKind: String = "", val detailId: String = "",
+    val detailReturn: Screen = Screen.REPOSITORY, val title: String = "", val detail: String = "", val detailKind: String = "", val detailId: String = "",
     val text: String = "", val original: String = "", val fileSha: String = "", val fileHead: String = "",
     val fileMode: String = "100644", val draft: ChangeSet? = null, val form: Form? = null, val login: DeviceLogin? = null,
     val theme: String = "System", val recent: List<String> = emptyList(), val pins: List<String> = emptyList(), val compactHome: Boolean = false,
@@ -140,7 +140,7 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
             Screen.ACCOUNT -> {
                 val profile = api.json("/user")
                 val groups = api.list("/users/${segment(s.account!!.login)}/orgs?per_page=100").map { Entry(it.text("login"), "Organization", kind = "user", path = it.text("login")) }
-                entries(listOf(Entry(profile.text("name").ifBlank { profile.text("login") }, profile.text("bio"), "${profile.optInt("public_repos")} repos · ${profile.optInt("followers")} followers · ${profile.optInt("following")} following")) + groups)
+                entries(listOf(Entry(profile.text("name").ifBlank { profile.text("login") }, profile.text("bio"), "${profile.optInt("public_repos")} repos · ${profile.optInt("followers")} followers · ${profile.optInt("following")} following", kind = "user", path = profile.text("login"))) + groups)
             }
             Screen.REPOSITORY -> loadRepository(append)
             else -> Unit
@@ -183,6 +183,14 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
         when {
             entry.kind == "repository" || entry.kind == "activity" -> openRepository(entry.path)
             entry.kind == "branch" -> branch(entry.title)
+            entry.kind == "tag" -> work {
+                val base = api.repoPath(state.value.repo!!.fullName)
+                var target = api.json("$base/git/ref/tags/${filePath(entry.title)}").getJSONObject("object")
+                var depth = 0
+                while(target.text("type") == "tag" && depth++ < 5) target = api.json("$base/git/tags/${target.text("sha")}").getJSONObject("object")
+                require(target.text("type") == "commit") { "This tag does not resolve to a commit." }
+                loadDetail(Entry(entry.title, id = target.text("sha"), kind = "commit"))
+            }
             entry.kind == "dir" -> { update { it.copy(path = entry.path) }; refresh() }
             entry.kind == "file" -> openFile(entry.path)
             entry.kind.startsWith("search") -> work {
@@ -202,7 +210,7 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
             }
             entry.kind == "user" -> work {
                 val user = api.json("/users/${segment(entry.path)}")
-                update { it.copy(screen = Screen.DETAIL, title = user.text("login"), detail = listOf(user.text("name"), user.text("bio"), user.text("location"), "${user.optInt("followers")} followers · ${user.optInt("following")} following").filter(String::isNotBlank).joinToString("\n\n"), detailKind = "user", detailId = entry.path, entries = emptyList()) }
+                update { it.copy(screen = Screen.DETAIL, title = user.text("login"), detail = listOf(user.text("name"), user.text("bio"), user.text("location"), "${user.optInt("followers")} followers · ${user.optInt("following")} following").filter(String::isNotBlank).joinToString("\n\n"), detailReturn = if(it.screen == Screen.DETAIL) it.detailReturn else it.screen, detailKind = "user", detailId = entry.path, entries = emptyList()) }
             }
             entry.kind in listOf("issue", "pull", "commit", "run", "release") -> work { loadDetail(entry) }
         }
@@ -239,7 +247,7 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
             }
             "release" -> children = item.getJSONArray("assets").objects().map { Entry(it.text("name"), "${it.optLong("size")} bytes · download opens the authenticated browser", id = it.getLong("id").toString(), kind = "asset", url = it.text("browser_download_url")) }
         }
-        update { it.copy(screen = Screen.DETAIL, title = item.text("title").ifBlank { item.text("name").ifBlank { entry.title } }, detail = text, detailId = entry.id, detailKind = entry.kind, entries = children) }
+        update { it.copy(screen = Screen.DETAIL, title = item.text("title").ifBlank { item.text("name").ifBlank { entry.title } }, detail = text, detailReturn = if(s.screen == Screen.DETAIL) s.detailReturn else s.screen, detailId = entry.id, detailKind = entry.kind, entries = children) }
     }
     fun openFile(path: String) { work { loadFile(path) } }
     private suspend fun loadFile(path: String) {
@@ -282,7 +290,7 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
         when {
             s.screen == Screen.REPOSITORY && s.path.isNotBlank() -> { update { it.copy(path = it.path.substringBeforeLast('/', "")) }; refresh() }
             s.screen in listOf(Screen.FILE, Screen.DETAIL, Screen.DRAFTS) -> {
-                update { it.copy(screen = if (it.repo != null) Screen.REPOSITORY else Screen.HOME, path = if (s.screen == Screen.FILE) s.path.substringBeforeLast('/', "") else "", entries = emptyList()) }; refresh()
+                update { it.copy(screen = if (s.screen == Screen.DETAIL) s.detailReturn else if (it.repo != null) Screen.REPOSITORY else Screen.HOME, path = if (s.screen == Screen.FILE) s.path.substringBeforeLast('/', "") else "", entries = emptyList()) }; refresh()
             }
             else -> navigate(Screen.HOME)
         }
@@ -380,12 +388,12 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
             "Followers" -> api.list("/users/$login/followers?per_page=100").map { Entry(it.text("login"), kind = "user", path = it.text("login")) }
             else -> api.list("/users/$login/following?per_page=100").map { Entry(it.text("login"), kind = "user", path = it.text("login")) }
         }
-        update { it.copy(screen = Screen.DETAIL, title = kind, detail = "First 100 results. Read-only account view.", detailKind = "accountList", entries = list) }
+        update { it.copy(screen = Screen.DETAIL, title = kind, detail = "First 100 results. Read-only account view.", detailReturn = Screen.ACCOUNT, detailKind = "accountList", entries = list) }
     } }
     fun gist(id: String) { work {
         val gist = api.json("/gists/${segment(id)}")
         val files = gist.getJSONObject("files")
-        update { it.copy(screen = Screen.DETAIL, title = gist.text("description").ifBlank { "Gist" }, detailKind = "gist", detail = "${gist.text("id")} · native read-only view", entries = files.keys().asSequence().map { name -> val file = files.getJSONObject(name); Entry(name, file.text("content") + if(file.optBoolean("truncated")) "\n… file truncated by GitHub" else "", kind = "patch") }.toList()) }
+        update { it.copy(screen = Screen.DETAIL, title = gist.text("description").ifBlank { "Gist" }, detailReturn = Screen.ACCOUNT, detailKind = "gist", detail = "${gist.text("id")} · native read-only view", entries = files.keys().asSequence().map { name -> val file = files.getJSONObject(name); Entry(name, file.text("content") + if(file.optBoolean("truncated")) "\n… file truncated by GitHub" else "", kind = "patch") }.toList()) }
     } }
     fun contributions() { work {
         val login = state.value.account!!.login
@@ -394,7 +402,7 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
         require(!response.has("errors")) { "Contribution graph unavailable with this credential. GitHub GraphQL access is required." }
         val calendar = response.getJSONObject("data").getJSONObject("user").getJSONObject("contributionsCollection").getJSONObject("contributionCalendar")
         val days = calendar.getJSONArray("weeks").objects().flatMap { week -> week.getJSONArray("contributionDays").objects().map { it.text("date") to it.optInt("contributionCount") } }
-        update { it.copy(screen = Screen.DETAIL, title = "Contributions", detailKind = "contributions", detail = "${calendar.optInt("totalContributions")} contributions in the last year. Counts follow GitHub visibility settings.", entries = days.map { day -> Entry(day.first, "${day.second} contributions", id = day.second.toString(), kind = "contribution") }) }
+        update { it.copy(screen = Screen.DETAIL, title = "Contributions", detailReturn = Screen.ACCOUNT, detailKind = "contributions", detail = "${calendar.optInt("totalContributions")} contributions in the last year. Counts follow GitHub visibility settings.", entries = days.map { day -> Entry(day.first, "${day.second} contributions", id = day.second.toString(), kind = "contribution") }) }
     } }
 
     fun prepareTopics() { work {

@@ -42,7 +42,7 @@ private val destinations = listOf(
     fun back() { if (s.screen == Screen.FILE && s.text != s.original) leaveEditor = true else vm.back() }
     BackHandler(enabled = s.account != null && s.screen !in destinations.map { it.screen }) { back() }
     if (s.account == null) {
-        ConnectScreen(s, vm) { external = it }
+        ConnectScreen(s, vm, openLink = { external = it })
     } else BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 720.dp
         Row {
