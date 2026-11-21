@@ -7,9 +7,23 @@ A native Kotlin/Jetpack Compose Android application source project, application 
 mock server, seeded account data, analytics SDK or hosted token proxy.
 
 **This is not yet a production release.** The requested scope is substantial. The
-API paths and user flows below are implemented in source, but Android compilation,
-installation and authenticated end-to-end behavior have not been verified in this
-sandbox. Do not confuse source coverage with tested production functionality.
+API paths and user flows below are implemented in source. **Android compilation,
+lint, JVM tests and debug APK assembly passed in GitHub Actions** for commit
+`6c6e8b39d91ff0c16090d13f2ecb6ae645a9946c`. Installation, device/UI tests and
+authenticated end-to-end behavior remain unverified. Do not confuse build/source
+coverage with tested production functionality.
+
+## Verified build and download
+
+- [Successful Android CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44900961245)
+- [Debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44900961245/artifacts/14706460055)
+- Artifact: `eternalz-forge-debug`, ID `14706460055`, archive size 16,761,793 bytes.
+- Artifact archive digest: `sha256:5f501d0e1bb12086a7df30ed2e527de11d5970299dd5e15e37f476f2e1e32148`
+  (archive digest, not an APK signing-certificate fingerprint).
+- Download requires GitHub access to this repository. Extract and install
+  `app-debug.apk`; artifact retention is seven days. It is debug-signed.
+- The sandbox cannot fetch GitHub's artifact-storage host, so no local APK file is
+  attached. The verified artifact is available directly from GitHub above.
 
 ## Native implementation coverage
 
@@ -43,23 +57,26 @@ sandbox. Do not confuse source coverage with tested production functionality.
   API. SHA-256: `2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046`.
 - Attempted `./gradlew --version`: **blocked**, no Java/JAVA_HOME in this sandbox.
 
-## Tests and CI supplied, but not executed here
+## Native tests and CI results
 
-- JVM tests for path/ref validation and bounded review diffs.
-- Fake-transport commit tests for moved-head/no writes, file modes/deletion,
+- **Passed in CI:** JVM tests for path/ref validation and bounded review diffs.
+- **Passed in CI:** fake-transport commit tests for moved-head/no writes, file modes/deletion,
   non-force updates and concurrent-push rejection.
-- Instrumented Compose destructive-confirmation test.
-- Instrumented Keystore encryption, restore and account-isolation test. Run this
+- **Supplied, not executed:** instrumented Compose destructive-confirmation test.
+- **Supplied, not executed:** instrumented Keystore encryption, restore and account-isolation test. Run this
   only on a test install; it operates on the installed app's vault.
 - SHA-pinned GitHub Actions workflow: lintDebug, JVM tests, debug APK assembly and
-  artifact upload on push/PR/manual dispatch. This workflow has **not** been run
-  by this session. No remote push, deployment, signing key or release was created.
+  artifact upload on push/PR/manual dispatch. **Passed** after fixing a Compose
+  callback compiler error found by the first build attempts. Work was committed
+  and pushed only to the existing Arena branch; no merge, deployment, production
+  signing key or release was created. The runner warns that the conservative
+  Gradle baseline is out of date; upgrade testing remains a maintenance task.
 
 ## Release blockers / next verification gates
 
-1. Run CI/Android Studio build and resolve any dependency, Kotlin type, lint or API
-   compatibility problems. Dependency versions are selected as a conservative
-   known-compatible baseline, not verified as the latest available stack.
+1. Keep CI green; validate release/R8 assembly separately from the verified debug
+   build. Dependency versions are a tested conservative baseline, not the latest
+   available stack. Plan an AGP/Gradle/target-SDK upgrade before store release.
 2. Register a product-owned GitHub OAuth app and enable device flow, or evaluate a
    GitHub App architecture with fine-grained installations and secure token refresh.
 3. Exercise real public/private/organization repository flows with least-privilege

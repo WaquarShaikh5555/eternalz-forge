@@ -6,10 +6,20 @@ A native Kotlin / Jetpack Compose GitHub client with a restrained graphite-and-l
 interface, encrypted multi-account storage, real GitHub API operations, a mobile
 code editor and optimistic, non-force multi-file commits. No WebView. No mock data.
 
-> **Development build, not a production release.** Android compilation and device
-> behavior have not yet been validated. Read the
+> **Verified development build, not a production release.** Android lint, JVM
+> tests and debug APK assembly passed in GitHub Actions. Device and authenticated
+> end-to-end behavior still need testing. Read the
 > [implementation status](docs/implementation-status.md) for exact coverage,
 > missing flows and verification results.
+
+## Install the development build
+
+[Download the debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44900961245/artifacts/14706460055)
+from the [successful CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44900961245).
+Sign in to GitHub, download/extract `eternalz-forge-debug.zip`, then install
+`app-debug.apk` on an Android 8+ device. Android may ask you to allow installation
+from that browser/file manager. This is a debug-signed test build, not a Play Store
+release. CI artifacts expire after seven days; rerun CI to regenerate one.
 
 ## Build
 

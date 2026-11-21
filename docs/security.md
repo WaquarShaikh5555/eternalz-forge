@@ -99,6 +99,7 @@ administration cannot be safely emulated by embedding a confidential secret in
 an APK; the app links to GitHub's settings. Exact fine-grained permissions are
 reviewed there rather than inferred from missing OAuth scope headers.
 
-The implementation needs a real Android build, instrumented cryptographic tests,
-authenticated integration tests and independent security review before release.
+The debug Android build, lint and JVM commit-safety tests passed in CI. The
+implementation still needs instrumented cryptographic tests, authenticated
+integration tests, release-build validation and independent security review before release.
 The seven local static rules are a small regression net, not a security certificate.

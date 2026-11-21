@@ -1,7 +1,14 @@
 # Android agent workflow
 
-This repository is prepared for Android development, but contains no app yet.
-Read `docs/android-tooling.md` before claiming build/device capabilities.
+This repository contains the native Eternalz Forge Android application. Read
+`docs/implementation-status.md` for exact coverage and verification, and
+`docs/android-tooling.md` for local sandbox constraints. Android CI can build
+outside this sandbox; local Java/SDK/emulator tools are still unavailable.
+
+App stack: Kotlin 2.1.20, Compose compiler 2.1.20, Compose BOM 2025.04.01,
+AGP 8.9.2, Gradle 8.11.1, JDK 17, compile/target SDK 35, min SDK 26.
+Use `./gradlew lintDebug testDebugUnitTest assembleDebug` in a native environment.
+No secrets, signing keys or production accounts belong in this repository.
 
 ## Executable tools
 
