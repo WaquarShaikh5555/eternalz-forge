@@ -9,16 +9,16 @@ mock server, seeded account data, analytics SDK or hosted token proxy.
 **This is not yet a production release.** The requested scope is substantial. The
 API paths and user flows below are implemented in source. **Android compilation,
 lint, JVM tests and debug APK assembly passed in GitHub Actions** for commit
-`563b12b78135489f3dba9cbb24e9f37ad640fb81`. Installation and six UI/security tests passed on an Android 11/API 30 Pixel 4
+`cea75c36fa03fc9b82428f826c1ab2cd7784f8dd`. Installation and six UI/security tests passed on an Android 11/API 30 Pixel 4
 emulator. Authenticated end-to-end behavior remains unverified. Do not confuse build/source
 coverage with tested production functionality.
 
 ## Verified build and download
 
-- [Successful Android CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997)
-- [Debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997/artifacts/14709394248)
-- Artifact: `eternalz-forge-debug`, ID `14709394248`, archive size 16,783,589 bytes.
-- Artifact archive digest: `sha256:12bb8dbaaadc7b0ea5f2b2aa7654f6fed428447107e9615dfba9789e3e5b8539`
+- [Successful Android CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44927124185)
+- [Debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44927124185/artifacts/14716322420)
+- Artifact: `eternalz-forge-debug`, ID `14716322420`, archive size 16,783,513 bytes.
+- Artifact archive digest: `sha256:ec7022d5d3241cebbb10b59d27fd39e0a0e14eb3b9a19e8ab55cdf7abf1d9386`
   (archive digest, not an APK signing-certificate fingerprint).
 - Download requires GitHub access to this repository. Extract and install
   `app-debug.apk`; artifact retention is seven days. It is debug-signed.
@@ -61,10 +61,11 @@ coverage with tested production functionality.
 
 Version 0.3.0 adds five JVM authorization-policy tests and a sixth emulator test
 for the token-free default sign-in UI. All pass in the linked CI run. Successful
-live OAuth authorization is **not** verified: no registered product client ID was
-supplied in this session. GitHub owner setup is still required before distributing
-a login-ready build. Debug owner-setup messaging and release configuration checks
-do not replace that registration.
+live account OAuth approval is **not** verified. For version 0.3.1 the owner has
+supplied the public Client ID; it is included in Gradle build configuration. GitHub
+accepted a direct device-code request and confirmed Device Flow is enabled. The
+build configuration gate, lint/JVM tests and all six emulator tests pass. The
+remaining step is an actual user approving a sign-in on GitHub, not app registration.
 
 
 - **Passed in CI:** JVM tests for path/ref validation and bounded review diffs.

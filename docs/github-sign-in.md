@@ -114,3 +114,20 @@ tests, including the default sign-in/owner-setup test. The short-code grant has
 not been exercised against a real registered product client in this session.
 That was the pre-registration 0.3.0 build. The owner has since supplied the public
 ID and Device Flow is confirmed enabled for the 0.3.1 build.
+
+
+## Configured APK — 0.3.1
+
+[CI run 44927124185](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44927124185)
+passed the non-empty sign-in configuration gate, Android lint, JVM tests, debug
+APK assembly and all six emulator UI/security tests for commit
+`cea75c36fa03fc9b82428f826c1ab2cd7784f8dd`.
+
+[Download the configured APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44927124185/artifacts/14716322420).
+Install the extracted `app-debug.apk`, tap Continue with GitHub, copy the one-time
+code, open GitHub and approve, then return to Forge. Select Include private
+repositories first if private-repository access is wanted. No owner setup or
+manual-token entry is required by this configured build.
+
+A live account grant is deliberately left to the user; the successful device-code
+probe and build do not claim that an account has already been authorized.

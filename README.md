@@ -29,8 +29,8 @@ Dark mode remains optional; existing explicit appearance preferences are respect
 
 ## Install the development build
 
-[Download the debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997/artifacts/14709394248)
-from the [successful CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997).
+[Download the debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44927124185/artifacts/14716322420)
+from the [successful CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44927124185).
 Sign in to GitHub, download/extract `eternalz-forge-debug.zip`, then install
 `app-debug.apk` on an Android 8+ device. Android may ask you to allow installation
 from that browser/file manager. This is a debug-signed test build, not a Play Store
