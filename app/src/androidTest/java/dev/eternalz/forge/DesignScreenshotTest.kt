@@ -52,7 +52,7 @@ class DesignScreenshotTest {
     private fun save(name: String, bitmap: Bitmap) {
         val folder = File(context.getExternalFilesDir(null), "design-screenshots").apply { mkdirs() }
         File(folder, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        val preview = Bitmap.createScaledBitmap(bitmap, 360, (bitmap.height * 360f / bitmap.width).toInt(), true)
-        File(folder, "$name.jpg").outputStream().use { preview.compress(Bitmap.CompressFormat.JPEG, 65, it) }
+        val preview = Bitmap.createScaledBitmap(bitmap, 320, (bitmap.height * 320f / bitmap.width).toInt(), true)
+        File(folder, "$name.jpg").outputStream().use { preview.compress(Bitmap.CompressFormat.JPEG, 40, it) }
     }
 }

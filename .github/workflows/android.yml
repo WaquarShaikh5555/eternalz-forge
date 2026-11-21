@@ -32,7 +32,7 @@ jobs:
           import os
           from pathlib import Path
           log = Path(os.environ['RUNNER_TEMP']) / 'android-build.log'
-          text = log.read_text(errors='replace')[-18000:] if log.exists() else 'No Gradle log was produced.'
+          text = log.read_text(errors='replace')[-3500:] if log.exists() else 'No Gradle log was produced.'
           text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
           print('::error title=Android build diagnostic::' + text)
           PYLOG
@@ -74,10 +74,6 @@ jobs:
           python3 - <<'PYDEVICE'
           import base64, os
           from pathlib import Path
-          for path in sorted(Path('design-screenshots').glob('*.jpg')):
-              payload = base64.b64encode(path.read_bytes()).decode()
-              for i in range(0, len(payload), 45000):
-                  print(f'::notice title=design-preview-{path.stem}-{i//45000}::{payload[i:i+45000]}')
           reports = list(Path('app/build/outputs/androidTest-results').rglob('TEST-*.xml'))
           failures = []
           import xml.etree.ElementTree as ET
@@ -87,13 +83,22 @@ jobs:
                   for failure in list(case.findall('failure')) + list(case.findall('error')):
                       failures.append(case.attrib.get('name','test') + ': ' + (failure.text or failure.attrib.get('message','')))
           if failures:
-              text = '\n'.join(failures)[-18000:]
+              text = '\n'.join(failures)[-3500:]
               print('::error title=Device test failures::' + text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
           elif not reports:
               log = Path(os.environ['RUNNER_TEMP']) / 'device-tests.log'
-              text = log.read_text(errors='replace')[-14000:] if log.exists() else 'No device test report was produced.'
+              text = log.read_text(errors='replace')[-3500:] if log.exists() else 'No device test report was produced.'
               print('::warning title=Device test diagnostics::' + text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
           PYDEVICE
+      - name: Preview sign-in fixture
+        if: always()
+        run: python3 tools/android/publish-design-preview.py sign-in-light
+      - name: Preview workspace light fixture
+        if: always()
+        run: python3 tools/android/publish-design-preview.py workspace-light
+      - name: Preview workspace dark fixture
+        if: always()
+        run: python3 tools/android/publish-design-preview.py workspace-dark
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
