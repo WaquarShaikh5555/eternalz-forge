@@ -27,16 +27,21 @@ and navigation, repository surfaces and onboarding have been redesigned.
 [View the actual emulator screenshots](docs/design-system.md) (test-only sample data).
 Dark mode remains optional; existing explicit appearance preferences are respected.
 
-## Install the development build
+## Install and update
 
-[Download the debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44927124185/artifacts/14716322420)
-from the [successful CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44927124185).
-Sign in to GitHub, download/extract `eternalz-forge-debug.zip`, then install
-`app-debug.apk` on an Android 8+ device. Android may ask you to allow installation
-from that browser/file manager. This is a debug-signed test build, not a Play Store
-release. If Android rejects an update because a previous CI build used a different
-debug signing key, copy any local draft contents before uninstalling/reinstalling:
-uninstalling removes local credentials and drafts. CI artifacts expire after seven days; rerun CI to regenerate one.
+Installers will be distributed as **direct `.apk` release assets**, not ZIPs.
+The app includes **Check for app updates** before/after sign-in, with version and
+installed-certificate checks and Android's explicit package-installer approval.
+
+**Publication currently blocked:** the GitHub integration cannot configure Actions
+secrets (HTTP 403). The permanent private signing identity must be set up before
+publishing another installer. No new update-compatible APK is available yet.
+The previous disposable-runner debug builds had changing signing certificates;
+Android cannot update those in place without their original private key. Do not
+uninstall or clear storage without saving local drafts.
+
+See [distribution/signing setup](docs/android-updates.md). CI ZIP artifacts are
+build/test diagnostics, not the installation route.
 
 ## Build
 
