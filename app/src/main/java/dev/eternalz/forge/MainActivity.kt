@@ -40,6 +40,9 @@ class MainActivity : ComponentActivity() {
                     @Suppress("UNCHECKED_CAST")
                     override fun <T : ViewModel> create(modelClass: Class<T>): T = ForgeViewModel(vault.getOrThrow()) as T
                 })
+                androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                    vm.resumeLogin()
+                }
                 val state by vm.state.collectAsStateWithLifecycle()
                 ForgeTheme(state.theme) { ForgeApp(state, vm) }
             }

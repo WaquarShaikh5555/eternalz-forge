@@ -27,7 +27,7 @@ class GitHubApi(private val token: String = "", private val transport: ApiTransp
     }
 
     suspend fun oauth(path: String, body: JSONObject): JSONObject =
-        exchange("POST", "https://github.com/login/$path", body, false).value as JSONObject
+        (transport?.execute("POST", "/login/$path", body) ?: exchange("POST", "https://github.com/login/$path", body, false)).value as JSONObject
 
     private suspend fun exchange(method: String, address: String, body: JSONObject?, authenticated: Boolean): Reply = withContext(Dispatchers.IO) {
         val url = URL(address)

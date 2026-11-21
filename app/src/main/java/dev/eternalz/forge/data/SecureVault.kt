@@ -43,6 +43,13 @@ class SecureVault(context: Context) {
         try { output.write(bytes); file.finishWrite(output) }
         catch (error: Exception) { file.failWrite(output); throw error }
     }
+    // Pending grants must survive Android reclaiming the app while the browser is open.
+    // This record is encrypted with the same Keystore key as account credentials.
+    fun pendingLogin(): JSONObject? = root.optJSONObject("pendingLogin")
+    fun pendingLogin(value: JSONObject?) {
+        if (value == null) root.remove("pendingLogin") else root.put("pendingLogin", value)
+        persist()
+    }
     fun accounts(): List<Account> = root.optJSONArray("accounts")?.objects()?.map { Account(it.text("id"), it.text("login"), it.text("name"), it.text("scopes")) } ?: emptyList()
     fun active(): String = root.text("active")
     fun token(id: String): String = root.optJSONArray("accounts")?.objects()?.firstOrNull { it.text("id") == id }?.text("token") ?: ""

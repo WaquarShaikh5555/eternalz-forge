@@ -1,0 +1,62 @@
+# Direct APK distribution and compatible updates
+
+## Why earlier builds could not update in place
+
+The previous workflow used Android's automatically generated debug keystore on
+disposable GitHub runners. The application ID stayed the same but the certificate
+changed between runs. Android correctly refuses to replace an installed app with
+one signed by an unrelated key. Increasing versionCode alone cannot fix that.
+
+There is no supported bypass that preserves private app data. A compatible update
+of an already-installed disposable-key build requires its original private key.
+We have not recovered that key; do not claim migration of those installs. Save
+local drafts before choosing to uninstall. Do not clear storage to debug sign-in.
+
+## Permanent key setup (once, repository owner)
+
+Use `bash tools/android/configure-signing.sh` with a GitHub connection authorized
+to manage repository Actions secrets. It checks permission and existing secrets
+before generating a key, uses the installed OpenSSL (no dependency download),
+generates a 4096-bit RSA PKCS12 identity, and uploads key/password as one encrypted
+repository Actions secret `FORGE_ANDROID_SIGNING`. The private files are temporary,
+mode-restricted and deleted on exit. Neither key nor password is committed or
+printed. This script refuses to replace an existing identity.
+
+**Current blocker:** this session's GitHub integration returned HTTP 403 for the
+repository Actions-secrets public-key/list endpoints. Source-code push access is
+not equivalent to Actions-secrets management permission. The secret has NOT been
+created. Grant the GitHub connection that permission before running the script.
+Do not send signing passwords or private keys in chat.
+
+Preserve/back up the signing identity through your organization's approved secret
+management process. Do not delete/replace the secret between builds. Android
+cannot accept updates if its signing identity is lost. A production app should
+also use a reviewed release-signing/backup policy rather than distribute debuggable
+builds indefinitely.
+
+## CI and direct downloads
+
+CI restores the private identity only into the verification job's temporary
+storage, signs the debug APK with that fixed identity, and runs lint/JVM tests.
+The emulator job uses an isolated test signing key and does not receive the
+production identity. A dependent publication job runs only after both pass. It
+verifies the APK with Android's apksigner, and creates a versioned GitHub Release
+with a direct `.apk` asset plus SHA-256 checksum and signing-certificate metadata.
+It never overwrites a release asset. Bump versionCode AND versionName for a new
+published build. No publication occurs without the permanent key; refusing to ship
+another disposable-key installer is intentional. ZIP artifacts remain CI diagnostics,
+not the user-facing installation route.
+
+The app's **Check for app updates** action is available before and after login.
+It uses an unauthenticated request to this fixed repository's latest stable
+release, requires the exact expected HTTPS APK URL and version/signing metadata,
+and compares the published certificate to the installed certificate. A mismatched
+key is explained rather than offered as an in-place update. Android's package
+installer performs the actual cryptographic APK signature verification; metadata
+alone is not cryptographic proof. The download goes through the browser, followed
+by Android's explicit installer confirmation. No silent installs, broad file
+permissions, background auto-downloads or credential-bearing release requests.
+
+There is not yet a published permanently signed APK/direct URL from this change.
+The user must not be told an update-compatible build is available until key setup,
+CI and release publication have actually succeeded.

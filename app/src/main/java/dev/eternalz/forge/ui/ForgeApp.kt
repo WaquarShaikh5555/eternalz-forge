@@ -100,6 +100,13 @@ private val destinations = listOf(
             }
         }
     }
+    s.updateMessage?.let { message ->
+        AlertDialog(onDismissRequest = vm::dismissUpdate, title = { Text("App update") },
+            text = { Text(message) },
+            confirmButton = { s.updateUrl?.let { url -> TextButton(onClick = { vm.dismissUpdate(); external = url }) { Text("Download APK") } }
+                ?: TextButton(onClick = vm::dismissUpdate) { Text("OK") } },
+            dismissButton = { if (s.updateUrl != null) TextButton(onClick = vm::dismissUpdate) { Text("Later") } })
+    }
     s.form?.let { form -> ActionSheet(form, s.busy, onDismiss = { vm.form(null) }) { vm.apply(form, it) } }
     external?.let { url ->
         val uri = runCatching { Uri.parse(url) }.getOrNull()
@@ -301,7 +308,8 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
         items(s.entries) { entry -> EntryRow(entry) { vm.open(entry) } }
         item { Row(Modifier.horizontalScroll(rememberScrollState()).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { SmallAction("Gists", Icons.Outlined.Code) { vm.accountList("Gists") }; SmallAction("Contributions", Icons.Outlined.CalendarMonth) { vm.contributions() }; SmallAction("Followers", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Followers") }; SmallAction("Following", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Following") } } }
         item { TextButton(onClick = { vm.form(Form("disconnect", "Disconnect @${s.account!!.login}?", warning = "Removes this account's credential, staged files, pins and recents from this device. Other accounts are untouched. This does NOT revoke access on GitHub; use Manage access or Tokens to revoke it there.", confirmation = s.account.login)) }, modifier = Modifier.padding(12.dp)) { Text("Disconnect this account", color = MaterialTheme.colorScheme.error) } }
-        item { Text("ETERNALZ FORGE / 0.3.1\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { UpdateButton(s, vm) }
+        item { Text("ETERNALZ FORGE / 0.3.2\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -340,7 +348,8 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
                 Icon(Icons.Outlined.ContentCopy, null, Modifier.size(16.dp)); Text("Copy sign-in code", Modifier.padding(start = 8.dp))
             }
             Button(onClick = { openLink(s.login.uri) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) { Text("2. Approve on GitHub") }
-            Text("Waiting for authorization… expires in ${s.login.expires / 60} minutes. Return here after approving.", fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
+            Text(s.notice ?: "Waiting for authorization… expires in ${s.login.expires / 60} minutes. Return here after approving.", fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
+            TextButton(onClick = vm::resumeLogin, enabled = !s.authorizing) { Text("Check authorization again") }
             TextButton(onClick = vm::cancelLogin) { Text("Cancel sign-in") }
         } else if (tokenMode) {
             Text("Manual token connection", style = MaterialTheme.typography.titleLarge)
@@ -373,6 +382,7 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
             TextButton(onClick = { tokenMode = true }, enabled = !s.busy && !s.authorizing) { Text("Advanced: connect an existing token") }
         }
         } }
+        UpdateButton(s, vm)
         Spacer(Modifier.height(24.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Icon(Icons.Outlined.VerifiedUser, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary); Text("Encrypted with Android Keystore.\nCredentials stay on your device. No analytics.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Spacer(Modifier.height(24.dp))
@@ -398,4 +408,18 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
             TextButton(onClick = onDismiss, enabled = !busy, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Cancel") }
         }
     }
+}
+
+
+@Composable private fun UpdateButton(s: ForgeState, vm: ForgeViewModel) {
+    val context = LocalContext.current
+    TextButton(enabled = !s.checkingUpdate, onClick = {
+        @Suppress("DEPRECATION")
+        val info = context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNATURES)
+        @Suppress("DEPRECATION")
+        val certificate = info.signatures?.firstOrNull()?.toByteArray()?.let { bytes ->
+            java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        }.orEmpty()
+        vm.checkForUpdate(BuildConfig.VERSION_CODE, certificate)
+    }) { Text(if (s.checkingUpdate) "Checking for updates…" else "Check for app updates · ${BuildConfig.VERSION_NAME}") }
 }

@@ -16,6 +16,7 @@ data class Form(val kind: String, val title: String, val fields: List<Field> = e
 data class DeviceLogin(val code: String, val uri: String, val expires: Int)
 data class ForgeState(
     val screen: Screen = Screen.HOME, val account: Account? = null, val accounts: List<Account> = emptyList(),
+    val updateMessage: String? = null, val updateUrl: String? = null, val checkingUpdate: Boolean = false,
     val busy: Boolean = false, val authorizing: Boolean = false, val error: String? = null, val notice: String? = null,
     val repositories: List<Repository> = emptyList(), val entries: List<Entry> = emptyList(),
     val repo: Repository? = null, val branch: String = "", val path: String = "", val tab: String = "Code", val page: Int = 1,
@@ -26,7 +27,7 @@ data class ForgeState(
     val theme: String = "Light", val recent: List<String> = emptyList(), val pins: List<String> = emptyList(), val compactHome: Boolean = false,
 )
 
-class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
+class ForgeViewModel(private val vault: SecureVault, private val authApi: (String) -> GitHubApi = { GitHubApi(it) }) : ViewModel() {
     private val mutable = MutableStateFlow(ForgeState(theme = vault.preference("theme", "Light"), compactHome = vault.preference("compact") == "true"))
     val state = mutable.asStateFlow()
     private var api = GitHubApi()
@@ -35,7 +36,7 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
     private var generation = 0
     private var authAttempt = 0
     private fun update(block: (ForgeState) -> ForgeState) { mutable.value = block(mutable.value) }
-    init { restore() }
+    init { restore(); resumeLogin() }
     private fun restore() {
         val accounts = vault.accounts(); val account = accounts.firstOrNull { it.id == vault.active() }
         api = GitHubApi(account?.let { vault.token(it.id) }.orEmpty())
@@ -51,6 +52,26 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
             catch (e: CancellationException) { throw e }
             catch (e: Exception) { if (epoch == generation) update { it.copy(error = e.message ?: "Something went wrong. Please refresh and try again.") } }
             finally { if (epoch == generation) update { it.copy(busy = false) } }
+        }
+    }
+    fun dismissUpdate() { update { it.copy(updateMessage = null, updateUrl = null) } }
+    fun checkForUpdate(installedCode: Int, certificate: String) {
+        if (state.value.checkingUpdate) return
+        update { it.copy(checkingUpdate = true) }
+        viewModelScope.launch {
+            try {
+                // Deliberately unauthenticated: never send the user's credential for updates.
+                val release = AppUpdate.parse(GitHubApi().json("/repos/WaquarShaikh5555/eternalz-forge/releases/latest"))
+                val newer = release.versionCode > installedCode
+                val compatible = release.certificate.equals(certificate, ignoreCase = true)
+                update { it.copy(updateMessage = when {
+                    !newer -> "You are on the latest published version."
+                    !compatible -> "${release.version} is available, but its signing certificate differs from this installation. Android will not allow an in-place update. Do not uninstall without saving local drafts."
+                    else -> "${release.version} is available with the same signing identity. Download the APK and choose Update in Android's installer. Your accounts and drafts stay on this device. Android verifies the APK signature before updating."
+                }, updateUrl = if (newer && compatible) release.url else null) }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { update { it.copy(updateMessage = "Unable to find a compatible published APK. Check your connection and try again. Unverified builds and ZIP artifacts are not offered as updates.", updateUrl = null) } }
+            finally { update { it.copy(checkingUpdate = false) } }
         }
     }
     fun clearError() = update { it.copy(error = null, notice = null) }
@@ -75,7 +96,7 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
     fun deviceLogin(clientId: String, privateRepositories: Boolean = false, workflowFiles: Boolean = false) {
         if (state.value.busy || state.value.authorizing) return
         if (!DeviceAuthorization.validClientId(clientId)) {
-            update { it.copy(error = "This build needs the app owner's one-time GitHub sign-in setup. No user token is required.") }
+            update { it.copy(error = "This build needs the app owner's GitHub sign-in configuration.") }
             return
         }
         authJob?.cancel()
@@ -83,40 +104,107 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
         update { it.copy(authorizing = true, error = null, login = null) }
         authJob = viewModelScope.launch {
             try {
-                val guest = GitHubApi()
-                val data = guest.oauth("device/code", obj("client_id" to clientId, "scope" to DeviceAuthorization.scopes(privateRepositories, workflowFiles)))
+                val data = authApi("").oauth("device/code", obj("client_id" to clientId, "scope" to DeviceAuthorization.scopes(privateRepositories, workflowFiles)))
                 if (data.has("error")) error(DeviceAuthorization.errorMessage(data.text("error")))
                 val seconds = data.optInt("expires_in", 900).coerceIn(1, 3600)
-                val deviceCode = data.getString("device_code")
-                val userCode = data.getString("user_code")
-                require(deviceCode.isNotBlank() && userCode.isNotBlank()) { "GitHub returned an invalid sign-in code. Please try again." }
-                update { it.copy(login = DeviceLogin(userCode, "https://github.com/login/device", seconds)) }
-                var interval = data.optInt("interval", 5).coerceAtLeast(5)
-                withTimeout(seconds * 1000L) {
-                    while (isActive) {
-                        delay(interval * 1000L)
-                        val reply = guest.oauth("oauth/access_token", obj("client_id" to clientId, "device_code" to deviceCode, "grant_type" to "urn:ietf:params:oauth:grant-type:device_code"))
-                        when (reply.text("error")) {
-                            "authorization_pending" -> Unit
-                            "slow_down" -> interval = DeviceAuthorization.nextInterval(interval, reply.optInt("interval"))
-                            "" -> {
-                                val accessToken = reply.getString("access_token")
-                                require(accessToken.isNotBlank()) { "GitHub did not return an access token. Try again." }
-                                update { it.copy(login = null) }; connect(accessToken); return@withTimeout
-                            }
-                            else -> error(DeviceAuthorization.errorMessage(reply.text("error")))
-                        }
-                    }
-                }
-            } catch (e: TimeoutCancellationException) { update { it.copy(login = null, error = "Sign-in code expired. Start again.") } }
-            catch (e: CancellationException) { throw e }
-            catch (e: Exception) { update { it.copy(login = null, error = e.message ?: "Sign-in failed.") } }
+                require(data.getString("device_code").isNotBlank() && data.getString("user_code").isNotBlank())
+                data.put("client_id", clientId).put("deadline", System.currentTimeMillis() + seconds * 1000L)
+                vault.pendingLogin(data)
+                pollLogin(data, attempt)
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { if (attempt == authAttempt) update { it.copy(error = "Unable to finish GitHub sign-in. Check your connection and retry. Your pending approval is retained until it expires.") } }
             finally { if (attempt == authAttempt) update { it.copy(authorizing = false) } }
         }
     }
+    /** Called at startup and on browser return; never creates a second polling loop. */
+    fun resumeLogin() {
+        if (authJob?.isActive == true || state.value.busy) return
+        val pending = vault.pendingLogin() ?: return
+        val attempt = ++authAttempt
+        update { it.copy(authorizing = true, error = null) }
+        authJob = viewModelScope.launch {
+            try { pollLogin(pending, attempt) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { if (attempt == authAttempt) update { it.copy(error = "Sign-in could not finish. Your approval is saved; return online and tap Check authorization again.") } }
+            finally { if (attempt == authAttempt) update { it.copy(authorizing = false) } }
+        }
+    }
+    private suspend fun pollLogin(pending: JSONObject, attempt: Int) {
+        val deadline = pending.getLong("deadline")
+        var interval = pending.optInt("interval", 5).coerceIn(5, 60)
+        val guest = authApi("")
+        while (currentCoroutineContext().isActive && attempt == authAttempt) {
+            val remaining = ((deadline - System.currentTimeMillis()) / 1000L).toInt()
+            val savedToken = pending.text("access_token")
+            if (savedToken.isBlank() && remaining <= 0) {
+                vault.pendingLogin(null)
+                update { it.copy(login = null, error = "Sign-in code expired. Start again for a new code.") }
+                return
+            }
+            update { it.copy(login = DeviceLogin(pending.getString("user_code"), "https://github.com/login/device", remaining.coerceAtLeast(0))) }
+            try {
+                if (savedToken.isNotBlank()) {
+                    update { it.copy(notice = "GitHub approved. Connecting your account…") }
+                    // Complete in the SAME coroutine. Do not fire-and-forget connect().
+                    val candidate = authApi(savedToken)
+                    val reply = candidate.request("GET", "/user")
+                    val user = reply.value as JSONObject
+                    currentCoroutineContext().ensureActive()
+                    val account = Account(user.getLong("id").toString(), user.text("login"), user.text("name"), reply.scopes)
+                    vault.connect(account, savedToken)
+                    vault.pendingLogin(null)
+                    api = candidate
+                    update { ForgeState(account = account, accounts = vault.accounts(), theme = it.theme, compactHome = it.compactHome,
+                        draft = vault.draft(account.id), recent = vault.recent(account.id), pins = vault.pins(account.id)) }
+                    refresh()
+                    return
+                }
+                // Persist the next allowed poll, including across process recreation/browser return.
+                val wait = (pending.optLong("next_poll") - System.currentTimeMillis()).coerceAtLeast(0)
+                delay(wait)
+                val nextPoll = System.currentTimeMillis() + interval * 1000L
+                pending.put("next_poll", nextPoll)
+                vault.pendingLogin(pending)
+                val reply = guest.oauth("oauth/access_token", obj("client_id" to pending.getString("client_id"),
+                    "device_code" to pending.getString("device_code"), "grant_type" to "urn:ietf:params:oauth:grant-type:device_code"))
+                when (reply.text("error")) {
+                    "authorization_pending" -> update { it.copy(notice = "Waiting for GitHub approval. After approving, return here.") }
+                    "slow_down" -> {
+                        interval = DeviceAuthorization.nextInterval(interval, reply.optInt("interval"))
+                        pending.put("interval", interval).put("next_poll", System.currentTimeMillis() + interval * 1000L)
+                        vault.pendingLogin(pending)
+                    }
+                    "" -> {
+                        val token = reply.getString("access_token")
+                        require(token.isNotBlank())
+                        // Save immediately: the device grant may only be exchanged once.
+                        pending.put("access_token", token)
+                        vault.pendingLogin(pending)
+                    }
+                    else -> {
+                        vault.pendingLogin(null)
+                        update { it.copy(login = null, error = DeviceAuthorization.errorMessage(reply.text("error"))) }
+                        return
+                    }
+                }
+            } catch (e: ApiFailure) {
+                if (e.status == 401 && savedToken.isNotBlank()) {
+                    vault.pendingLogin(null)
+                    update { it.copy(login = null, error = "GitHub rejected the approved credential. Start sign-in again.") }
+                    return
+                }
+                if (e.status !in listOf(408, 429) && e.status < 500) throw e
+                update { it.copy(notice = "GitHub is temporarily unavailable. Retrying automatically…") }
+                delay(interval * 1000L)
+            } catch (e: java.io.IOException) {
+                update { it.copy(notice = "Connection interrupted. Keeping your approval and retrying automatically…") }
+                delay(interval * 1000L)
+            }
+        }
+    }
     fun cancelLogin() {
-        ++authAttempt; authJob?.cancel()
-        update { it.copy(login = null, authorizing = false) }
+        ++authAttempt; authJob?.cancel(); vault.pendingLogin(null)
+        update { it.copy(login = null, authorizing = false, notice = null) }
     }
     fun navigate(screen: Screen) {
         if (state.value.busy) return

@@ -131,3 +131,19 @@ manual-token entry is required by this configured build.
 
 A live account grant is deliberately left to the user; the successful device-code
 probe and build do not claim that an account has already been authorized.
+
+## 0.3.2 recovery changes (live account retest still required)
+
+A report of GitHub accepting the code while Forge stayed disconnected exposed
+missing lifecycle/retry handling. Pending device grants (including the exchanged
+token awaiting `/user` validation) now persist **encrypted** in the Keystore vault.
+Startup/browser return resumes the same attempt, network interruptions retry,
+GitHub slow-down intervals survive restarts, and account validation/storage completes
+in the polling coroutine instead of launching an unrelated fire-and-forget job.
+Cancellation/expiry/terminal GitHub errors clear the pending grant. A consumed grant's
+saved token can finish validation after the original device-code deadline.
+
+An emulator regression test seeds an encrypted consumed grant, recreates the view
+model, injects a transient `/user` connection failure, and checks automatic retry,
+account storage and pending-grant cleanup. It uses synthetic credentials, not a
+real approved GitHub account. An interactive approval retest remains necessary.

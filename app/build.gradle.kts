@@ -16,8 +16,8 @@ android {
         applicationId = "dev.eternalz.forge"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 5
+        versionName = "0.3.2"
         buildConfigField("String", "GITHUB_OAUTH_CLIENT_ID", "\"$githubClientId\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -27,8 +27,24 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    val signingPath = providers.environmentVariable("FORGE_SIGNING_STORE").orNull
+    if (!signingPath.isNullOrBlank()) {
+        signingConfigs {
+            create("distribution") {
+                storeFile = file(signingPath)
+                storePassword = providers.environmentVariable("FORGE_SIGNING_PASSWORD").get()
+                keyAlias = "forge"
+                keyPassword = providers.environmentVariable("FORGE_SIGNING_PASSWORD").get()
+                storeType = "PKCS12"
+            }
+        }
+    }
     buildTypes {
+        debug {
+            if (!signingPath.isNullOrBlank()) signingConfig = signingConfigs.getByName("distribution")
+        }
         release {
+            if (!signingPath.isNullOrBlank()) signingConfig = signingConfigs.getByName("distribution")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

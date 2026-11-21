@@ -23,6 +23,26 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Restore permanent distribution signing identity
+        env:
+          SIGNING_JSON: ${{ secrets.FORGE_ANDROID_SIGNING }}
+        run: |
+          python3 - <<'PYKEY'
+          import base64,json,os,pathlib
+          raw=os.environ.get('SIGNING_JSON', '')
+          if not raw:
+              print('::warning::No permanent signing identity. This build is test-only and will NOT be published as an install/update APK.')
+          else:
+              data=json.loads(raw)
+              password=data['password']
+              if not password or '\n' in password or '\r' in password: raise ValueError('Invalid signing password')
+              print('::add-mask::'+password)
+              path=pathlib.Path(os.environ['RUNNER_TEMP'])/'forge-signing.p12'
+              path.write_bytes(base64.b64decode(data['keystore'],validate=True))
+              path.chmod(0o600)
+              with open(os.environ['GITHUB_ENV'],'a') as env:
+                  env.write(f'FORGE_SIGNING_STORE={path}\nFORGE_SIGNING_PASSWORD={password}\n')
+          PYKEY
       - name: Lint, unit tests, debug APK
         run: |
           set -o pipefail
@@ -44,6 +64,45 @@ jobs:
           name: eternalz-forge-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
+
+  publish-apk:
+    needs: [verify, device-design]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/arena/3f610dc4-eternalz-forge'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Publish only permanently signed tested APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNING_JSON: ${{ secrets.FORGE_ANDROID_SIGNING }}
+        run: |
+          if [ -z "$SIGNING_JSON" ]; then
+            echo '::warning::Direct APK publication blocked: configure FORGE_ANDROID_SIGNING once. Refusing to distribute another incompatible disposable-key APK.'
+            exit 0
+          fi
+          gh run download "$GITHUB_RUN_ID" -n eternalz-forge-debug -D "$RUNNER_TEMP/apk"
+          version=$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+          code=$(sed -n 's/.*versionCode = \([0-9]*\)/\1/p' app/build.gradle.kts)
+          apk="$RUNNER_TEMP/apk/eternalz-forge-v$version.apk"
+          mv "$RUNNER_TEMP/apk/app-debug.apk" "$apk"
+          signer=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$signer" verify --verbose --print-certs "$apk" > "$RUNNER_TEMP/signature.txt"
+          cert=$(sed -n 's/Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/signature.txt")
+          test "${#cert}" = 64
+          sha256sum "$apk" > "$apk.sha256"
+          cat > "$RUNNER_TEMP/release-notes" <<EOFNOTES
+          Native Android development build; install the APK directly, no ZIP extraction.
+          GitHub sign-in now saves pending grants encrypted and resumes after browser return/process recreation.
+          Updates use a permanent signing identity. Older disposable-debug-key installs cannot be migrated without their original key; save drafts before any uninstall.
+          This is not a production security audit or proof of live account approval.
+
+          Forge-Version-Code: $code
+          Forge-Signing-SHA256: $cert
+          EOFNOTES
+          # Never replace an existing release's APK/signature/version silently.
+          gh release create "v$version" "$apk" "$apk.sha256" --target "$GITHUB_SHA" --title "Eternalz Forge $version" --notes-file "$RUNNER_TEMP/release-notes"
 
   device-design:
     env:
