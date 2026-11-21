@@ -34,9 +34,24 @@ The current GitHub connection does not provide a supported OAuth-app registratio
 API; the owner must perform this one consent/registration step in GitHub's UI.
 Normal users do none of this.
 
-## Configure builds once
+## Current registration — configured
 
-For GitHub Actions, add a repository **variable**, not a secret, called
+The owner supplied public client ID `Ov23liwHrytkoVH3CMAd`. It is configured in
+`gradle.properties` as `forge.githubClientId`, so both local and CI builds include
+it automatically. This identifier is intentionally public; no client secret or
+user credential was supplied or stored.
+
+A direct request to GitHub's `/login/device/code` endpoint on 2026-11-21 confirmed
+that GitHub accepted the ID and issued a device authorization challenge (Device
+Flow is enabled). That diagnostic challenge was not displayed, approved, or
+exchanged for a token. This verifies registration readiness, not a completed
+user authorization. The owner no longer needs to configure a repository variable.
+
+## Configure or change a registration
+
+The checked-in public Gradle property is the configured default. A `-P` Gradle
+argument can override it. If the checked-in property is removed, GitHub Actions
+can instead read a repository **variable**, not a secret, called
 `GITHUB_OAUTH_CLIENT_ID` containing that public Client ID. Both build/test jobs
 already read this variable.
 
@@ -97,4 +112,5 @@ Neither a public client ID nor a successful APK build proves an end-to-end login
 passed Android lint, JVM tests, debug APK assembly and all six emulator UI/security
 tests, including the default sign-in/owner-setup test. The short-code grant has
 not been exercised against a real registered product client in this session.
-Providing a public Client ID and enabling device flow is still the owner's next step.
+That was the pre-registration 0.3.0 build. The owner has since supplied the public
+ID and Device Flow is confirmed enabled for the 0.3.1 build.

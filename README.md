@@ -12,13 +12,13 @@ code editor and optimistic, non-force multi-file commits. No WebView. No mock da
 > [implementation status](docs/implementation-status.md) for exact coverage,
 > missing flows and verification results.
 
-## GitHub sign-in — 0.3.0
+## GitHub sign-in — 0.3.1
 
 Token creation is no longer the onboarding path. **Continue with GitHub** now
 uses device authorization with a build-configured public client ID. No client
-secret is embedded. The app owner must complete the
-[one-time registration](docs/github-sign-in.md); without that ID a debug build
-shows an honest owner-setup message rather than a fake working sign-in.
+secret is embedded. The owner registration is now configured, and GitHub has
+confirmed Device Flow is enabled. Users tap Continue with GitHub, approve a
+short-lived code on GitHub and return to Forge. See [sign-in details](docs/github-sign-in.md).
 
 ## Visual revision — 0.2.0
 
@@ -62,15 +62,16 @@ GitHub's browser page and return to Forge. Users no longer need to create/paste
 personal access tokens or enter client IDs. Manual-token connection is an advanced
 fallback, not the onboarding path.
 
-**One-time product-owner requirement:** register Eternalz Forge as a GitHub OAuth
-app, enable Device Flow and configure its **public client ID** in the build.
-The repository variable `GITHUB_OAUTH_CLIENT_ID` is wired into both CI jobs.
+**Product registration configured:** the public OAuth client ID is in
+`gradle.properties`; GitHub has confirmed Device Flow is enabled. Both CI and
+local builds include it. The optional `GITHUB_OAUTH_CLIENT_ID` repository variable
+is only needed if the checked-in property is removed.
 No confidential client secret belongs in this Android application.
 
 See **[GitHub sign-in setup](docs/github-sign-in.md)** for the owner-only steps,
-permission choices and testing boundary. Until that public ID is configured,
-debug builds clearly show an owner-setup message; they do not claim working login.
-Release builds reject missing sign-in configuration.
+permission choices and testing boundary. Account authorization requires your
+approval on GitHub; successful end-to-end account sign-in has not yet been tested
+by this session. Release builds reject missing sign-in configuration.
 
 Private-repository and workflow-file permissions are explicit opt-ins. Access
 still requires the user's approval and respects GitHub permissions, organization

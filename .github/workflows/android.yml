@@ -26,7 +26,7 @@ jobs:
       - name: Lint, unit tests, debug APK
         run: |
           set -o pipefail
-          ./gradlew --no-daemon lintDebug testDebugUnitTest assembleDebug 2>&1 | tee "$RUNNER_TEMP/android-build.log"
+          ./gradlew --no-daemon verifyGitHubSignInConfiguration lintDebug testDebugUnitTest assembleDebug 2>&1 | tee "$RUNNER_TEMP/android-build.log"
       - name: Publish bounded failure diagnostics
         if: failure()
         run: |
