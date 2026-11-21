@@ -28,12 +28,14 @@ jobs:
       - name: Publish bounded failure diagnostics
         if: failure()
         run: |
-          if [ -f "$RUNNER_TEMP/android-build.log" ]; then
-            tail -100 "$RUNNER_TEMP/android-build.log" | while IFS= read -r line; do
-              line="${line//'%'/'%25'}"
-              printf '::error::%s\n' "$line"
-            done
-          fi
+          python3 - <<'PYLOG'
+          import os
+          from pathlib import Path
+          log = Path(os.environ['RUNNER_TEMP']) / 'android-build.log'
+          text = log.read_text(errors='replace')[-18000:] if log.exists() else 'No Gradle log was produced.'
+          text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print('::error title=Android build diagnostic::' + text)
+          PYLOG
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: success()
         with:
