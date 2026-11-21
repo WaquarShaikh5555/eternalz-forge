@@ -147,3 +147,11 @@ An emulator regression test seeds an encrypted consumed grant, recreates the vie
 model, injects a transient `/user` connection failure, and checks automatic retry,
 account storage and pending-grant cleanup. It uses synthetic credentials, not a
 real approved GitHub account. An interactive approval retest remains necessary.
+
+The 0.3.2 implementation passed [CI run 44930019469](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44930019469):
+lint, JVM tests/debug APK assembly and all eight Android emulator tests. Both
+pending-approval exchange and consumed-grant recreation/network-retry regression
+tests passed. These are injected synthetic tests, not a live GitHub account grant.
+Publication is blocked on permanent private signing-key setup; see
+[APK update status](android-updates.md). Do not use the earlier 0.3.1 download to
+test the recovery changes.

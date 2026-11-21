@@ -60,3 +60,13 @@ permissions, background auto-downloads or credential-bearing release requests.
 There is not yet a published permanently signed APK/direct URL from this change.
 The user must not be told an update-compatible build is available until key setup,
 CI and release publication have actually succeeded.
+
+## Verification result — 0.3.2
+
+[CI run 44930019469](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44930019469)
+for `f7a5faafa8d2f9ab3ee4a84b7f3bfd41dbd08410` passed configuration verification,
+Android lint, JVM tests/debug assembly and all **eight** emulator tests, including
+both injected device-flow recovery/approval tests. The release job was correctly
+**skipped** because no permanent signing secret exists. The private-key branch of
+the workflow and actual upgrade installation remain unverified until that blocker
+is resolved. No direct download URL is claimed for an unpublished APK.

@@ -104,3 +104,21 @@ remaining step is an actual user approving a sign-in on GitHub, not app registra
 The full original product brief is **not** claimed complete or production-ready.
 This file intentionally records remaining work instead of presenting placeholders
 or browser fallbacks as fully native implementations.
+
+## Latest revision — 0.3.2 sign-in recovery and update plumbing
+
+Commit `f7a5faafa8d2f9ab3ee4a84b7f3bfd41dbd08410`,
+[CI 44930019469](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44930019469):
+lint, JVM tests/debug assembly and **eight emulator tests passed**. Device grants
+and consumed tokens awaiting account validation now survive process recreation in
+the encrypted vault, retry transient failures, and finish account storage in the
+same auth job. Two injected recovery/exchange tests passed; actual user approval
+still needs retesting in the new build.
+
+Added explicit signature-aware update checks and a gated direct-APK Release job.
+**No new installable release has been published**: Actions-secrets permission is
+HTTP 403, so the permanent signing secret cannot yet be provisioned by this session.
+Publication intentionally skips rather than distribute another incompatible key.
+Old disposable-debug-key installs cannot be upgraded without the old private key.
+See [signing/update status](android-updates.md). Earlier download links in this
+document are historical build evidence, not the new recovery installer.
