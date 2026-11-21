@@ -1,0 +1,12 @@
+.cache/
+.venv/
+__pycache__/
+*.pyc
+.local/
+.gradle/
+/build/
+/app/build/
+local.properties
+.env
+*.jks
+*.keystore

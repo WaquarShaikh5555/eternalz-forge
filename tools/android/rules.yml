@@ -1,0 +1,40 @@
+rules:
+  - id: android-global-scope
+    languages: [kotlin]
+    message: Use a lifecycle-owned scope or an explicitly managed application scope.
+    severity: WARNING
+    pattern: GlobalScope.launch(...)
+  - id: android-blocking-sleep
+    languages: [kotlin]
+    message: Blocking sleep needs thread review; prefer delay in suspending code. Not proof of an ANR.
+    severity: WARNING
+    pattern: Thread.sleep(...)
+  - id: android-webview-debugging
+    languages: [kotlin]
+    message: WebView debugging must not be enabled in production; gate on a debug build.
+    severity: WARNING
+    pattern: WebView.setWebContentsDebuggingEnabled(true)
+  - id: android-unsafe-hostname-verifier
+    languages: [kotlin]
+    message: Never accept every TLS hostname. Use the platform verifier.
+    severity: ERROR
+    pattern: $CLIENT.hostnameVerifier { $A, $B -> true }
+  - id: android-world-readable
+    languages: [kotlin]
+    message: World-readable local files expose private data; use MODE_PRIVATE.
+    severity: ERROR
+    pattern: $CTX.openFileOutput($NAME, Context.MODE_WORLD_READABLE)
+  - id: android-cleartext-manifest
+    languages: [generic]
+    paths:
+      include: ['**/AndroidManifest.xml']
+    message: Cleartext transport is enabled; review release network security policy.
+    severity: ERROR
+    pattern: 'android:usesCleartextTraffic="true"'
+  - id: android-release-debuggable
+    languages: [generic]
+    paths:
+      include: ['**/AndroidManifest.xml']
+    message: Explicitly debuggable manifest; ensure this cannot reach release artifacts.
+    severity: WARNING
+    pattern: 'android:debuggable="true"'
