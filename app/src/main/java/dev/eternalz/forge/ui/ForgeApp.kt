@@ -65,7 +65,7 @@ private val destinations = listOf(
                         actions = {
                             if (s.draft != null) IconButton(onClick = { if(s.screen == Screen.FILE && s.text != s.original) leaveEditor = true else vm.draftScreen() }, enabled = !s.busy) { BadgedBox(badge = { Badge { Text(s.draft.files.size.toString()) } }) { Icon(Icons.Outlined.Difference, "Staged changes") } }
                             IconButton(onClick = vm::refresh, enabled = !s.busy) { Icon(Icons.Outlined.Refresh, "Refresh") }
-                            Surface(onClick = { if(s.screen == Screen.FILE && s.text != s.original) leaveEditor = true else vm.navigate(Screen.ACCOUNT) }, modifier = Modifier.padding(end = 16.dp).size(36.dp), shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                            Surface(onClick = { if(s.screen == Screen.FILE && s.text != s.original) leaveEditor = true else vm.navigate(Screen.ACCOUNT) }, modifier = Modifier.padding(end = 16.dp).size(48.dp), shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                                 Box(contentAlignment = Alignment.Center) { Text(s.account.login.take(2).uppercase(), fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                             }
                         })

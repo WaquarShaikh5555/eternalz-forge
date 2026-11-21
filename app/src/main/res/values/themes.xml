@@ -1,12 +1,12 @@
 <resources>
-    <style name="Theme.Forge" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.Forge.Base" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:navigationBarColor">#F5F6F3</item>
+        <item name="android:navigationBarColor">#146B50</item>
         <item name="android:statusBarColor">#F5F6F3</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:colorAccent">#146B50</item>
         <item name="android:windowBackground">#F5F6F3</item>
     </style>
+    <style name="Theme.Forge" parent="Theme.Forge.Base" />
 </resources>

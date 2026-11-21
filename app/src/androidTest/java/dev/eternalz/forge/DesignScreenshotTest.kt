@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
 package dev.eternalz.forge
 
 import android.graphics.Bitmap
