@@ -100,6 +100,17 @@ an APK; the app links to GitHub's settings. Exact fine-grained permissions are
 reviewed there rather than inferred from missing OAuth scope headers.
 
 The debug Android build, lint and JVM commit-safety tests passed in CI. The
-implementation still needs instrumented cryptographic tests, authenticated
-integration tests, release-build validation and independent security review before release.
+Keystore/account-isolation and typed-confirmation tests also pass on an API 30
+emulator. Authenticated integration tests, release-build validation and independent
+security review are still required before release.
 The seven local static rules are a small regression net, not a security certificate.
+
+
+## Design test capture boundary
+
+The shipping MainActivity still uses FLAG_SECURE. Screenshot tests run in the
+separate Compose test activity with synthetic fixtures, not a real connected
+account. They save test-only images to the disposable emulator's MediaStore so
+Gradle's uninstall cleanup does not erase the CI output. No production screenshot
+or content-export service was added. Full-resolution images are in the CI artifact;
+small JPEG previews are retained in `docs/screenshots/`.

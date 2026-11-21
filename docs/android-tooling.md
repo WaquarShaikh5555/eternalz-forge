@@ -7,7 +7,7 @@ At the tooling-preparation stage no application or cloud resource was created.
 Local SDK/JDK restrictions still apply, but a real GitHub Actions runner successfully
 ran Android lint, JVM tests and APK assembly. See
 [implementation status](implementation-status.md) for the verified artifact and
-remaining device/end-to-end tests. No backend cloud resource was needed.
+five passing emulator UI/security tests and remaining authenticated end-to-end work. No backend cloud resource was needed.
 
 ## Installed and working now
 
@@ -137,4 +137,5 @@ When app building begins in a permitted native environment:
 **Local sandbox boundary:** code generation, reference-grounded reviews, local
 Kotlin/manifest scans and R8 report analysis work here. Android compilation works
 through the repository's verified GitHub Actions CI runner, not inside this sandbox.
-Compose rendering, emulator interaction and device performance remain unverified.
+Compose rendering and five UI/security tests now pass through an API 30 GitHub
+Actions emulator; local rendering and device performance measurements remain unavailable.

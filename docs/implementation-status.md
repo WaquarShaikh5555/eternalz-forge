@@ -9,16 +9,16 @@ mock server, seeded account data, analytics SDK or hosted token proxy.
 **This is not yet a production release.** The requested scope is substantial. The
 API paths and user flows below are implemented in source. **Android compilation,
 lint, JVM tests and debug APK assembly passed in GitHub Actions** for commit
-`6c6e8b39d91ff0c16090d13f2ecb6ae645a9946c`. Installation, device/UI tests and
-authenticated end-to-end behavior remain unverified. Do not confuse build/source
+`bf6c91ea64aeda55496a870a994419005fdd9bb9`. Installation and five UI/security tests passed on an Android 11/API 30 Pixel 4
+emulator. Authenticated end-to-end behavior remains unverified. Do not confuse build/source
 coverage with tested production functionality.
 
 ## Verified build and download
 
-- [Successful Android CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44900961245)
-- [Debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44900961245/artifacts/14706460055)
-- Artifact: `eternalz-forge-debug`, ID `14706460055`, archive size 16,761,793 bytes.
-- Artifact archive digest: `sha256:5f501d0e1bb12086a7df30ed2e527de11d5970299dd5e15e37f476f2e1e32148`
+- [Successful Android CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44905175855)
+- [Debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44905175855/artifacts/14707936467)
+- Artifact: `eternalz-forge-debug`, ID `14707936467`, archive size 16,774,341 bytes.
+- Artifact archive digest: `sha256:ea6eb46acb17e90d1148b020fcb50393a8fb17a55829f8738856fd6b17e252ed`
   (archive digest, not an APK signing-certificate fingerprint).
 - Download requires GitHub access to this repository. Extract and install
   `app-debug.apk`; artifact retention is seven days. It is debug-signed.
@@ -43,11 +43,11 @@ coverage with tested production functionality.
 | Notifications | Unread/all, loaded repository/type/title filtering, issue/PR/commit routing, mark one/all read | Discussions, invitations and other subject types explain that their native detail is unavailable. No push notification service or background polling. |
 | Releases/tags | Browse releases, notes and assets; create draft/published release; edit notes; list/create lightweight tags | Asset/file downloads open a confirmed browser link, where GitHub may require its own login. No authenticated native download manager, asset upload, release publishing toggle or tag deletion UI. |
 | Search | GitHub repository, code, issue/PR, user and commit search with qualifiers, retained query, explicit submit, pagination | PR search uses `is:pr` in Issues; file-name search uses `filename:` in Code. Search is explicit rather than issuing rate-limited calls on each keystroke. GitHub token/search restrictions apply. |
-| UX | Graphite/lime and warm neutral design, light/dark/system themes, Material 3 controls, phone bottom navigation/tablet rail, native sheets, progress/empty/error states, refresh, offline banner | No screenshot, TalkBack, font scaling, RTL, tablet or frame-timing verification has run. English strings are currently inline. No persistent private-data browsing cache. |
+| UX | Light-first white/neutral/evergreen design, optional dark/system themes, Material 3 controls, phone bottom navigation/tablet rail, native sheets, progress/empty/error states, refresh, offline banner | Sign-in and workspace screenshots pass on a Pixel 4/API 30 emulator. TalkBack, font scaling, RTL, tablet and frame-timing verification remain outstanding. English strings are currently inline. No persistent private-data browsing cache. |
 
 ## Validation performed in this sandbox
 
-- Existing tooling tests: **3 passed** (skill integrity, doctor gate, R8 conversion/report).
+- Local tooling/contrast tests: **4 passed** (palette contrast, skill integrity, doctor gate, R8 conversion/report).
 - Local scanner fixture tests: **7 passed** (positive and negative examples).
 - Semgrep OSS scanned the app's main Kotlin/manifest sources: **0 findings** for
   the seven local rules; no parser diagnostics. This is a narrow static check,
@@ -62,9 +62,11 @@ coverage with tested production functionality.
 - **Passed in CI:** JVM tests for path/ref validation and bounded review diffs.
 - **Passed in CI:** fake-transport commit tests for moved-head/no writes, file modes/deletion,
   non-force updates and concurrent-push rejection.
-- **Supplied, not executed:** instrumented Compose destructive-confirmation test.
-- **Supplied, not executed:** instrumented Keystore encryption, restore and account-isolation test. Run this
+- **Passed on emulator:** instrumented Compose destructive-confirmation test.
+- **Passed on emulator:** instrumented Keystore encryption, restore and account-isolation test. Run this
   only on a test install; it operates on the installed app's vault.
+- **Passed on emulator:** three screenshot/theme tests (sign-in light, workspace light/dark).
+  Actual screenshots use explicitly synthetic fixtures; see [design revision](design-system.md).
 - SHA-pinned GitHub Actions workflow: lintDebug, JVM tests, debug APK assembly and
   artifact upload on push/PR/manual dispatch. **Passed** after fixing a Compose
   callback compiler error found by the first build attempts. Work was committed
@@ -82,8 +84,10 @@ coverage with tested production functionality.
 3. Exercise real public/private/organization repository flows with least-privilege
    test accounts. Test permission denials, SSO, rate limits, timeouts after writes,
    branch protection, archived/empty repos and simultaneous pushes.
-4. Run emulator/device tests and a complete accessibility/responsiveness pass.
-   Add screenshot regression tests and release/profileable Macrobenchmarks.
+4. Extend the five passing emulator tests to authenticated journeys, additional API
+   levels and tablets; complete accessibility/RTL/font-scale checks and
+   release/profileable Macrobenchmarks. The three screenshot cases are an initial
+   visual regression net, not an exhaustive screenshot suite.
 5. Complete the explicitly missing flows above, improve conflict-resolution UX,
    move strings to resources, review dependencies/licensing, add signed release
    infrastructure and independently security-review authentication/storage/networking.

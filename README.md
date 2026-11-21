@@ -2,24 +2,33 @@
 
 **Your GitHub workspace. Reimagined for Android.**
 
-A native Kotlin / Jetpack Compose GitHub client with a restrained graphite-and-lime
+A native Kotlin / Jetpack Compose GitHub client with a light-first neutral-and-evergreen
 interface, encrypted multi-account storage, real GitHub API operations, a mobile
 code editor and optimistic, non-force multi-file commits. No WebView. No mock data.
 
 > **Verified development build, not a production release.** Android lint, JVM
-> tests and debug APK assembly passed in GitHub Actions. Device and authenticated
-> end-to-end behavior still need testing. Read the
+> tests and debug APK assembly passed in GitHub Actions. Five Android emulator UI/security tests also pass. Authenticated
+> end-to-end behavior still needs testing. Read the
 > [implementation status](docs/implementation-status.md) for exact coverage,
 > missing flows and verification results.
 
+## Visual revision — 0.2.0
+
+Light mode is now the default. The sign-in/root background mismatch is fixed,
+and navigation, repository surfaces and onboarding have been redesigned.
+[View the actual emulator screenshots](docs/design-system.md) (test-only sample data).
+Dark mode remains optional; existing explicit appearance preferences are respected.
+
 ## Install the development build
 
-[Download the debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44900961245/artifacts/14706460055)
-from the [successful CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44900961245).
+[Download the debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44905175855/artifacts/14707936467)
+from the [successful CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44905175855).
 Sign in to GitHub, download/extract `eternalz-forge-debug.zip`, then install
 `app-debug.apk` on an Android 8+ device. Android may ask you to allow installation
 from that browser/file manager. This is a debug-signed test build, not a Play Store
-release. CI artifacts expire after seven days; rerun CI to regenerate one.
+release. If Android rejects an update because a previous CI build used a different
+debug signing key, copy any local draft contents before uninstalling/reinstalling:
+uninstalling removes local credentials and drafts. CI artifacts expire after seven days; rerun CI to regenerate one.
 
 ## Build
 
