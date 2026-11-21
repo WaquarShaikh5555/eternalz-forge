@@ -2,6 +2,8 @@
 package dev.eternalz.forge
 
 import android.graphics.Bitmap
+import android.content.ContentValues
+import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
@@ -50,10 +52,27 @@ class DesignScreenshotTest {
         compose.onNodeWithText("Ready when you are.").assertIsDisplayed()
         save("workspace-dark", compose.onRoot().captureToImage().asAndroidBitmap())
     }
+    private data class ScreenshotOutput(val extension: String, val image: Bitmap, val format: Bitmap.CompressFormat, val quality: Int)
     private fun save(name: String, bitmap: Bitmap) {
         val folder = File(context.getExternalFilesDir(null), "design-screenshots").apply { mkdirs() }
         File(folder, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         val preview = Bitmap.createScaledBitmap(bitmap, 320, (bitmap.height * 320f / bitmap.width).toInt(), true)
         File(folder, "$name.jpg").outputStream().use { preview.compress(Bitmap.CompressFormat.JPEG, 40, it) }
+        // Gradle can uninstall the test app after a run, removing app-scoped output.
+        // Persist only synthetic-fixture screenshots in MediaStore for CI retrieval.
+        for ((extension, image, format, quality) in listOf(
+            ScreenshotOutput("png", bitmap, Bitmap.CompressFormat.PNG, 100),
+            ScreenshotOutput("jpg", preview, Bitmap.CompressFormat.JPEG, 40),
+        )) {
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, "$name.$extension")
+                put(MediaStore.Images.Media.MIME_TYPE, if(extension == "png") "image/png" else "image/jpeg")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ForgeDesign")
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+            val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)!!
+            context.contentResolver.openOutputStream(uri)!!.use { image.compress(format, quality, it) }
+            context.contentResolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
+        }
     }
 }

@@ -44,7 +44,6 @@ jobs:
           retention-days: 7
 
   device-design:
-    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -76,12 +75,16 @@ jobs:
           from pathlib import Path
           reports = list(Path('app/build/outputs/androidTest-results').rglob('TEST-*.xml'))
           failures = []
+          cases = []
           import xml.etree.ElementTree as ET
           for report in reports:
               root = ET.parse(report).getroot()
               for case in root.iter('testcase'):
+                  cases.append(case.attrib.get('classname','') + '.' + case.attrib.get('name',''))
                   for failure in list(case.findall('failure')) + list(case.findall('error')):
                       failures.append(case.attrib.get('name','test') + ': ' + (failure.text or failure.attrib.get('message','')))
+          if cases:
+              print('::notice title=Device test summary::' + str(len(cases)) + ' test cases: ' + ', '.join(cases))
           if failures:
               text = '\n'.join(failures)[-3500:]
               print('::error title=Device test failures::' + text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
