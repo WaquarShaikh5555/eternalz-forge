@@ -9,16 +9,16 @@ mock server, seeded account data, analytics SDK or hosted token proxy.
 **This is not yet a production release.** The requested scope is substantial. The
 API paths and user flows below are implemented in source. **Android compilation,
 lint, JVM tests and debug APK assembly passed in GitHub Actions** for commit
-`bf6c91ea64aeda55496a870a994419005fdd9bb9`. Installation and five UI/security tests passed on an Android 11/API 30 Pixel 4
+`563b12b78135489f3dba9cbb24e9f37ad640fb81`. Installation and six UI/security tests passed on an Android 11/API 30 Pixel 4
 emulator. Authenticated end-to-end behavior remains unverified. Do not confuse build/source
 coverage with tested production functionality.
 
 ## Verified build and download
 
-- [Successful Android CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44905175855)
-- [Debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44905175855/artifacts/14707936467)
-- Artifact: `eternalz-forge-debug`, ID `14707936467`, archive size 16,774,341 bytes.
-- Artifact archive digest: `sha256:ea6eb46acb17e90d1148b020fcb50393a8fb17a55829f8738856fd6b17e252ed`
+- [Successful Android CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997)
+- [Debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997/artifacts/14709394248)
+- Artifact: `eternalz-forge-debug`, ID `14709394248`, archive size 16,783,589 bytes.
+- Artifact archive digest: `sha256:12bb8dbaaadc7b0ea5f2b2aa7654f6fed428447107e9615dfba9789e3e5b8539`
   (archive digest, not an APK signing-certificate fingerprint).
 - Download requires GitHub access to this repository. Extract and install
   `app-debug.apk`; artifact retention is seven days. It is debug-signed.
@@ -29,7 +29,7 @@ coverage with tested production functionality.
 
 | Area | Implemented source flows | Boundaries |
 | --- | --- | --- |
-| Authentication | GitHub OAuth device flow, cancellation/expiry/poll slow-down; validate a user-supplied token through `/user` | Requires your registered OAuth app's public client ID and enabled device flow. No embedded client secret. First-party GitHub App registration/installation and expiring-token refresh are not implemented. |
+| Authentication | Primary Continue with GitHub device flow, build-configured public client ID, optional private/workflow scopes, cancellation/expiry/poll slow-down; advanced manual token fallback | Requires the product owner's one-time OAuth registration and enabled device flow; normal users never enter client IDs or create tokens. See [setup](github-sign-in.md). No embedded client secret. First-party GitHub App registration/installation and expiring-token refresh are not implemented. |
 | Accounts | Keystore AES-GCM encrypted atomic vault, account switching, per-account drafts/recents/pins, disconnect; public profile/organizations, follower/following lists, read-only gists, GraphQL contribution calendar | OAuth account revocation remains in GitHub settings. Lists of people/gists/orgs show at most 100. No gist editing or organization administration. |
 | Dashboard | Real repository list, recent GitHub events, local recent/pinned repositories, staged-work shortcut, assigned-issue/review-request/created-PR search shortcuts, compact/expanded dashboard | Not an aggregate analytics dashboard. Events use GitHub's activity API and can be delayed. No fabricated counters. |
 | Repositories | Owned/collaborated/fork/private/starred filters, loaded-page text filtering, local sort, list/grid, pagination, create, fork, edit description/name/visibility/archive, topics, star/unstar, delete | Collaborated means returned repositories not owned by the signed-in login, including organization repositories. Filters/sort apply to loaded pages; global repository search is separate. No teams, webhooks or branch-protection editor. |
@@ -59,6 +59,14 @@ coverage with tested production functionality.
 
 ## Native tests and CI results
 
+Version 0.3.0 adds five JVM authorization-policy tests and a sixth emulator test
+for the token-free default sign-in UI. All pass in the linked CI run. Successful
+live OAuth authorization is **not** verified: no registered product client ID was
+supplied in this session. GitHub owner setup is still required before distributing
+a login-ready build. Debug owner-setup messaging and release configuration checks
+do not replace that registration.
+
+
 - **Passed in CI:** JVM tests for path/ref validation and bounded review diffs.
 - **Passed in CI:** fake-transport commit tests for moved-head/no writes, file modes/deletion,
   non-force updates and concurrent-push rejection.
@@ -84,7 +92,7 @@ coverage with tested production functionality.
 3. Exercise real public/private/organization repository flows with least-privilege
    test accounts. Test permission denials, SSO, rate limits, timeouts after writes,
    branch protection, archived/empty repos and simultaneous pushes.
-4. Extend the five passing emulator tests to authenticated journeys, additional API
+4. Extend the six passing emulator tests to authenticated journeys, additional API
    levels and tablets; complete accessibility/RTL/font-scale checks and
    release/profileable Macrobenchmarks. The three screenshot cases are an initial
    visual regression net, not an exhaustive screenshot suite.

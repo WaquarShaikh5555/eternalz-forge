@@ -89,3 +89,12 @@ Automated tests cover scope selection, client-ID validation, slow-down handling,
 owner/setup error messages and the token-free default sign-in UI. A real successful
 GitHub approval still requires the owner registration and an interactive test user.
 Neither a public client ID nor a successful APK build proves an end-to-end login.
+
+
+## Build/UI verification — 0.3.0
+
+[CI run 44910837997](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997)
+passed Android lint, JVM tests, debug APK assembly and all six emulator UI/security
+tests, including the default sign-in/owner-setup test. The short-code grant has
+not been exercised against a real registered product client in this session.
+Providing a public Client ID and enabling device flow is still the owner's next step.

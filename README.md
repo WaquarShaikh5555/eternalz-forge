@@ -7,10 +7,18 @@ interface, encrypted multi-account storage, real GitHub API operations, a mobile
 code editor and optimistic, non-force multi-file commits. No WebView. No mock data.
 
 > **Verified development build, not a production release.** Android lint, JVM
-> tests and debug APK assembly passed in GitHub Actions. Five Android emulator UI/security tests also pass. Authenticated
+> tests and debug APK assembly passed in GitHub Actions. Six Android emulator UI/security tests also pass. Authenticated
 > end-to-end behavior still needs testing. Read the
 > [implementation status](docs/implementation-status.md) for exact coverage,
 > missing flows and verification results.
+
+## GitHub sign-in — 0.3.0
+
+Token creation is no longer the onboarding path. **Continue with GitHub** now
+uses device authorization with a build-configured public client ID. No client
+secret is embedded. The app owner must complete the
+[one-time registration](docs/github-sign-in.md); without that ID a debug build
+shows an honest owner-setup message rather than a fake working sign-in.
 
 ## Visual revision — 0.2.0
 
@@ -21,8 +29,8 @@ Dark mode remains optional; existing explicit appearance preferences are respect
 
 ## Install the development build
 
-[Download the debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44905175855/artifacts/14707936467)
-from the [successful CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44905175855).
+[Download the debug APK artifact](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997/artifacts/14709394248)
+from the [successful CI run](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997).
 Sign in to GitHub, download/extract `eternalz-forge-debug.zip`, then install
 `app-debug.apk` on an Android 8+ device. Android may ask you to allow installation
 from that browser/file manager. This is a debug-signed test build, not a Play Store

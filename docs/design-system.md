@@ -71,3 +71,16 @@ on an ephemeral runner, uses KVM, and executes our fixed test script. No untrust
 repository/user input is interpolated into action configuration. The job has only
 read access to repository contents and no production credentials. It does not
 install an emulator in this restricted sandbox.
+
+
+## 0.3.0 sign-in revision
+
+The sign-in panel now starts with **Continue with GitHub**, not a personal-token
+field. Private repositories and editing Actions workflow files are explicit scope
+opt-ins. The manual token path is labeled Advanced, and the app owner configures
+the public client ID at build time instead of making each user supply one.
+
+The updated [sign-in capture](screenshots/sign-in-light.jpg) was inspected from
+[CI run 44910837997](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997).
+All six emulator UI/security tests passed. Owner registration and live OAuth
+approval are separate from these fixture/UI tests; see [GitHub setup](github-sign-in.md).
