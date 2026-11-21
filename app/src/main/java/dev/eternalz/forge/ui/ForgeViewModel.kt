@@ -80,6 +80,7 @@ class ForgeViewModel(private val vault: SecureVault, private val authApi: (Strin
     fun customize() { val next = !state.value.compactHome; vault.preference("compact", next.toString(), true); update { it.copy(compactHome = next) } }
     fun connect(token: String) {
         if (token.isBlank()) return
+        cancelLogin()
         work {
             val candidate = GitHubApi(token.trim()); val reply = candidate.request("GET", "/user"); val user = reply.value as JSONObject
             val account = Account(user.getLong("id").toString(), user.text("login"), user.text("name"), reply.scopes)
@@ -132,7 +133,7 @@ class ForgeViewModel(private val vault: SecureVault, private val authApi: (Strin
     private suspend fun pollLogin(pending: JSONObject, attempt: Int) {
         val deadline = pending.getLong("deadline")
         var interval = pending.optInt("interval", 5).coerceIn(5, 60)
-        val guest = authApi("")
+        val guest by lazy { authApi("") }
         while (currentCoroutineContext().isActive && attempt == authAttempt) {
             val remaining = ((deadline - System.currentTimeMillis()) / 1000L).toInt()
             val savedToken = pending.text("access_token")
