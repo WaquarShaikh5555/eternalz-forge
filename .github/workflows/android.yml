@@ -1,9 +1,9 @@
 name: Android verification
 on:
   push:
-    paths: ['app/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android.yml']
+    paths: ['app/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android.yml', 'tools/android/device-test.sh']
   pull_request:
-    paths: ['app/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android.yml']
+    paths: ['app/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android.yml', 'tools/android/device-test.sh']
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,4 +41,65 @@ jobs:
         with:
           name: eternalz-forge-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+  device-design:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Allow hardware acceleration on this disposable runner
+        run: sudo chmod a+rw /dev/kvm
+      - name: Native UI, Keystore and theme regression tests
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0, reviewed, Apache-2.0
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_4
+          ram-size: 2048M
+          disk-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: bash tools/android/device-test.sh
+      - name: Publish test diagnostics and test-fixture visual previews
+        if: always()
+        run: |
+          python3 - <<'PYDEVICE'
+          import base64, os
+          from pathlib import Path
+          for path in sorted(Path('design-screenshots').glob('*.jpg')):
+              payload = base64.b64encode(path.read_bytes()).decode()
+              for i in range(0, len(payload), 45000):
+                  print(f'::notice title=design-preview-{path.stem}-{i//45000}::{payload[i:i+45000]}')
+          reports = list(Path('app/build/outputs/androidTest-results').rglob('TEST-*.xml'))
+          failures = []
+          import xml.etree.ElementTree as ET
+          for report in reports:
+              root = ET.parse(report).getroot()
+              for case in root.iter('testcase'):
+                  for failure in list(case.findall('failure')) + list(case.findall('error')):
+                      failures.append(case.attrib.get('name','test') + ': ' + (failure.text or failure.attrib.get('message','')))
+          if failures:
+              text = '\n'.join(failures)[-18000:]
+              print('::error title=Device test failures::' + text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          elif not reports:
+              log = Path(os.environ['RUNNER_TEMP']) / 'device-tests.log'
+              text = log.read_text(errors='replace')[-14000:] if log.exists() else 'No device test report was produced.'
+              print('::warning title=Device test diagnostics::' + text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          PYDEVICE
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: native-design-and-device-tests
+          path: |
+            design-screenshots/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
           retention-days: 7

@@ -19,6 +19,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import dev.eternalz.forge.R
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -52,7 +55,12 @@ private val destinations = listOf(
             }
             Scaffold(modifier = Modifier.weight(1f), containerColor = MaterialTheme.colorScheme.background,
                 topBar = {
-                    TopAppBar(title = { Column { Text("ETERNALZ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("forge", fontWeight = FontWeight.SemiBold, fontSize = 23.sp) } },
+                    TopAppBar(colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background), title = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(painterResource(R.drawable.ic_forge), null, Modifier.size(30.dp), tint = Color.Unspecified)
+                            Text("Eternalz Forge", fontWeight = FontWeight.SemiBold, fontSize = 18.sp, letterSpacing = (-0.5).sp)
+                        }
+                    },
                         navigationIcon = { if (s.screen !in destinations.map { it.screen }) IconButton(onClick = { back() }, enabled = !s.busy) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } },
                         actions = {
                             if (s.draft != null) IconButton(onClick = { if(s.screen == Screen.FILE && s.text != s.original) leaveEditor = true else vm.draftScreen() }, enabled = !s.busy) { BadgedBox(badge = { Badge { Text(s.draft.files.size.toString()) } }) { Icon(Icons.Outlined.Difference, "Staged changes") } }
@@ -63,10 +71,10 @@ private val destinations = listOf(
                         })
                 },
                 bottomBar = {
-                    if (!wide) NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 0.dp) {
+                    if (!wide) NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
                         destinations.forEach { dest -> NavigationBarItem(selected = s.screen == dest.screen || (dest.screen == Screen.REPOS && s.screen in listOf(Screen.REPOSITORY, Screen.DETAIL, Screen.FILE, Screen.DRAFTS)),
                             onClick = { if (s.screen == Screen.FILE && s.text != s.original) leaveEditor = true else vm.navigate(dest.screen) },
-                            icon = { Icon(dest.icon, dest.label, Modifier.size(22.dp)) }, label = { Text(dest.label, fontSize = 10.sp) }, enabled = !s.busy) }
+                            icon = { Icon(dest.icon, dest.label, Modifier.size(22.dp)) }, label = { Text(dest.label, fontSize = 11.sp, fontWeight = FontWeight.Medium) }, colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary), enabled = !s.busy) }
                     }
                 }) { padding ->
                 Column(Modifier.padding(padding).fillMaxSize()) {
@@ -100,7 +108,7 @@ private val destinations = listOf(
 }
 
 @Composable fun BrandMark() {
-    Surface(shape = RoundedCornerShape(9.dp), color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp)) { Box(contentAlignment = Alignment.Center) { Text("F", color = MaterialTheme.colorScheme.onPrimary, fontFamily = Mono, fontSize = 27.sp, fontWeight = FontWeight.Black) } }
+    Icon(painterResource(R.drawable.ic_forge), "Eternalz Forge", Modifier.size(42.dp), tint = Color.Unspecified)
 }
 @Composable fun Eyebrow(text: String) { Text(text.uppercase(), fontFamily = Mono, fontSize = 10.sp, letterSpacing = 1.6.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 @Composable fun Heading(title: String, subtitle: String? = null) { Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) { Text(title, style = MaterialTheme.typography.headlineMedium); if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp)) } }
@@ -130,54 +138,112 @@ private val destinations = listOf(
     }
 }
 @Composable fun RepoRow(repo: Repository, onClick: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(20.dp, 15.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(if (repo.privateRepo) Icons.Outlined.Lock else Icons.Outlined.Book, null, Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.width(9.dp)); Text(repo.fullName.substringBefore('/'), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)); if (repo.archived) Pill("Archived") else Text(if (repo.privateRepo) "PRIVATE" else "PUBLIC", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Text(repo.name, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, modifier = Modifier.padding(top = 7.dp))
-        if (repo.description.isNotBlank()) Text(repo.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
-        Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (repo.language.isNotBlank()) { Text("●", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary); Text(repo.language, fontSize = 11.sp) }
-            Icon(Icons.Outlined.StarBorder, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Text(repo.stars.toString(), fontFamily = Mono, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.weight(1f)); Text(repo.updated.take(10), fontFamily = Mono, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(8.dp), modifier = Modifier.size(36.dp)) {
+                    Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Book, null, Modifier.size(19.dp), tint = MaterialTheme.colorScheme.primary) }
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(repo.fullName.substringBefore('/'), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(repo.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Icon(if (repo.privateRepo) Icons.Outlined.Lock else Icons.AutoMirrored.Outlined.ArrowForward, if(repo.privateRepo) "Private repository" else null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if(repo.description.isNotBlank()) Text(repo.description, fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
+            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if(repo.language.isNotBlank()) {
+                    val dot = when(repo.language.lowercase()) { "kotlin" -> Color(0xFF8A67B0); "typescript" -> Color(0xFF397DB5); "javascript" -> Color(0xFFB68A19); "python" -> Color(0xFF468777); else -> MaterialTheme.colorScheme.primary }
+                    Box(Modifier.size(6.dp).background(dot, RoundedCornerShape(3.dp)))
+                    Text(repo.language, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(5.dp))
+                }
+                Icon(Icons.Outlined.StarBorder, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(repo.stars.toString(), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if(repo.archived) Pill("Archived")
+                Spacer(Modifier.weight(1f))
+                Text(repo.updated.take(10), fontFamily = Mono, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
-    HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }
 
 fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name", "Repository name"), Field("description", "Description"), Field("visibility", "private or public", "private")), "Creates a repository in your personal account with an initial README.")
 
 @Composable fun HomeScreen(s: ForgeState, vm: ForgeViewModel) {
-    LazyColumn {
+    WorkspaceContent(s, onRepo = vm::openRepository, onCreate = { vm.form(createRepoForm()) },
+        onSearch = { vm.navigate(Screen.SEARCH) }, onAll = { vm.navigate(Screen.REPOS) },
+        onIssues = { vm.quickSearch("is:issue is:open assignee:${s.account?.login}") },
+        onReviews = { vm.quickSearch("is:pr is:open review-requested:${s.account?.login}") },
+        onDraft = vm::draftScreen, onCustomize = vm::customize, onActivity = vm::open)
+}
+
+@Composable fun WorkspaceContent(s: ForgeState, onRepo: (String) -> Unit, onCreate: () -> Unit,
+    onSearch: () -> Unit, onAll: () -> Unit, onIssues: () -> Unit, onReviews: () -> Unit,
+    onDraft: () -> Unit, onCustomize: () -> Unit, onActivity: (Entry) -> Unit) {
+    LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
-            Column(Modifier.padding(20.dp, 20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(6.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(3.dp))); Spacer(Modifier.width(8.dp)); Eyebrow("Your development workspace") }
-                Text("Less friction.\nMore shipping.", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(top = 15.dp))
-                Text("Welcome back, ${s.account!!.name.ifBlank { s.account.login }}.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
-                Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(onClick = { vm.form(createRepoForm()) }, shape = RoundedCornerShape(9.dp), enabled = !s.busy) { Icon(Icons.Outlined.Add, null, Modifier.size(17.dp)); Text("New repository", Modifier.padding(start = 7.dp), fontSize = 12.sp) }
-                    SmallAction("Find code", Icons.Outlined.Search, !s.busy) { vm.navigate(Screen.SEARCH) }
+            Column(Modifier.padding(horizontal = 20.dp).padding(top = 12.dp, bottom = 16.dp)) {
+                Eyebrow("YOUR WORKSPACE")
+                Text("Ready when you are.", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 8.dp))
+                Text("A clear view of what you're building.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                Surface(onClick = onSearch, color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
+                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Search, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Search your GitHub workspace", Modifier.weight(1f).padding(start = 10.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
-            HorizontalDivider(Modifier.padding(horizontal = 20.dp))
         }
-        if (s.draft != null) item { Surface(onClick = vm::draftScreen, color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.padding(20.dp, 16.dp)) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Difference, null); Column(Modifier.weight(1f).padding(start = 12.dp)) { Text("Pick up where you left off", fontWeight = FontWeight.Medium); Text("${s.draft.files.size} staged files · ${s.draft.repository}", fontSize = 12.sp) }; Icon(Icons.AutoMirrored.Outlined.ArrowForward, null) } } }
-        if (s.pins.isNotEmpty()) { item { Section("Pinned workspace") }; items(s.pins) { name -> EntryRow(Entry(name, "Pinned on this device", kind = "repository"), { vm.openRepository(name) }) } }
-        if (!s.compactHome && s.recent.isNotEmpty()) { item { Section("Jump back in") }; items(s.recent.take(3)) { name -> EntryRow(Entry(name, "Recently opened", kind = "repository"), { vm.openRepository(name) }) } }
-        item { Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallAction("Assigned issues", Icons.Outlined.Adjust, !s.busy) { vm.quickSearch("is:issue is:open assignee:${s.account!!.login}") }
-            SmallAction("Review requests", Icons.Outlined.RateReview, !s.busy) { vm.quickSearch("is:pr is:open review-requested:${s.account!!.login}") }
-            SmallAction("My pull requests", Icons.Outlined.Merge, !s.busy) { vm.quickSearch("is:pr is:open author:${s.account!!.login}") }
-        } }
-        item { Section("Repositories", "View all") { vm.navigate(Screen.REPOS) } }
-        items(s.repositories.take(if(s.compactHome) 3 else 5), key = { it.fullName }) { repo -> RepoRow(repo) { vm.openRepository(repo.fullName) } }
-        if (s.repositories.isEmpty() && !s.busy) item { EmptyState("Your workspace starts here", "Connect a credential with repository access, or create your first repository.") }
-        if (!s.compactHome) {
-            item { Section("Recent activity", "Customize") { vm.customize() } }
-            items(s.entries) { entry -> EntryRow(entry) { vm.open(entry) } }
-        } else item { TextButton(onClick = vm::customize, modifier = Modifier.padding(horizontal = 12.dp)) { Text("Show expanded dashboard") } }
-        item { Spacer(Modifier.height(24.dp)) }
+        item {
+            Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                WorkspaceShortcut("My issues", "Assigned to you", Icons.Outlined.Adjust, Modifier.weight(1f), onIssues)
+                WorkspaceShortcut("Reviews", "Your next review", Icons.Outlined.RateReview, Modifier.weight(1f), onReviews)
+            }
+        }
+        if(s.draft != null) item {
+            Surface(onClick = onDraft, color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(horizontal = 20.dp).padding(top = 16.dp)) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Difference, null, tint = MaterialTheme.colorScheme.primary)
+                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                        Text("Your changes are waiting", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Text("${s.draft.files.size} staged files · saved locally", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(17.dp), tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        if(s.pins.isNotEmpty()) {
+            item { Section("Pinned", "Manage") { onAll() } }
+            items(s.pins) { name -> EntryRow(Entry(name, "Pinned workspace", kind = "repository"), { onRepo(name) }) }
+        }
+        item { Section("Repositories", "View all", onAll) }
+        items(s.repositories.take(if(s.compactHome) 3 else 5), key = { it.fullName }) { repo -> RepoRow(repo) { onRepo(repo.fullName) } }
+        if(s.repositories.isEmpty() && !s.busy) item { EmptyState("Start something worth building", "Your accessible repositories will appear here. Create one or check your connected permissions.") }
+        item {
+            TextButton(onClick = onCreate, modifier = Modifier.padding(horizontal = 12.dp)) {
+                Icon(Icons.Outlined.Add, null, Modifier.size(17.dp)); Text("New repository", Modifier.padding(start = 8.dp), fontSize = 12.sp)
+            }
+        }
+        if(!s.compactHome) {
+            if(s.recent.isNotEmpty()) { item { Section("Recently opened") }; items(s.recent.take(2)) { name -> EntryRow(Entry(name, kind = "repository"), { onRepo(name) }) } }
+            item { Section("Activity", "Customize", onCustomize) }
+            items(s.entries) { entry -> EntryRow(entry) { onActivity(entry) } }
+        } else item { TextButton(onClick = onCustomize, modifier = Modifier.padding(horizontal = 12.dp)) { Text("Show activity") } }
+    }
+}
+
+@Composable private fun WorkspaceShortcut(title: String, subtitle: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    Surface(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.padding(15.dp)) {
+            Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+        }
     }
 }
 
@@ -232,19 +298,33 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
         items(s.entries) { entry -> EntryRow(entry) { vm.open(entry) } }
         item { Row(Modifier.horizontalScroll(rememberScrollState()).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { SmallAction("Gists", Icons.Outlined.Code) { vm.accountList("Gists") }; SmallAction("Contributions", Icons.Outlined.CalendarMonth) { vm.contributions() }; SmallAction("Followers", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Followers") }; SmallAction("Following", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Following") } } }
         item { TextButton(onClick = { vm.form(Form("disconnect", "Disconnect @${s.account!!.login}?", warning = "Removes this account's credential, staged files, pins and recents from this device. Other accounts are untouched. This does NOT revoke access on GitHub; use Manage access or Tokens to revoke it there.", confirmation = s.account.login)) }, modifier = Modifier.padding(12.dp)) { Text("Disconnect this account", color = MaterialTheme.colorScheme.error) } }
-        item { Text("ETERNALZ FORGE / 0.1.0\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("ETERNALZ FORGE / 0.2.0\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
 @Composable fun ConnectScreen(s: ForgeState, vm: ForgeViewModel, openLink: (String) -> Unit, embedded: Boolean = false) {
     var token by remember { mutableStateOf("") } // Intentionally never saveable / persisted before validation.
     var client by rememberSaveable { mutableStateOf("") }
-    var tokenMode by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().then(if(embedded) Modifier.heightIn(max = 650.dp) else Modifier.fillMaxHeight().systemBarsPadding()).verticalScroll(rememberScrollState()).padding(28.dp)) {
-        if (!embedded) { Row(verticalAlignment = Alignment.CenterVertically) { BrandMark(); Spacer(Modifier.width(12.dp)); Text("ETERNALZ / FORGE", fontFamily = Mono, fontSize = 12.sp, letterSpacing = 2.sp) }; Spacer(Modifier.height(56.dp)) }
-        Eyebrow("Built for the way you ship")
-        Text("Your GitHub.\nPocket-sized.\nFull-powered.", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(top = 20.dp))
-        Text("From the first issue to the final merge.\nA proper workspace, wherever you are.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 20.dp, bottom = 28.dp))
+    var tokenMode by remember { mutableStateOf(true) }
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+    Column(Modifier.widthIn(max = 520.dp).fillMaxWidth().then(if(embedded) Modifier.heightIn(max = 650.dp) else Modifier.fillMaxHeight().systemBarsPadding()).verticalScroll(rememberScrollState()).padding(28.dp)) {
+        if (!embedded) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BrandMark(); Spacer(Modifier.width(12.dp))
+                Text("Eternalz Forge", fontWeight = FontWeight.SemiBold, fontSize = 19.sp, letterSpacing = (-0.5).sp)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { vm.theme(if(s.theme == "Dark") "Light" else "Dark") }) {
+                    Icon(if(s.theme == "Dark") Icons.Outlined.LightMode else Icons.Outlined.DarkMode, "Switch light or dark theme", Modifier.size(21.dp))
+                }
+            }
+            Spacer(Modifier.height(38.dp))
+        }
+        Eyebrow("A NATIVE GITHUB WORKSPACE")
+        Text("Your code.\nWithin reach.", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(top = 20.dp))
+        Text("Browse, build and collaborate.\nA calmer way to work from your phone.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 14.dp, bottom = 24.dp))
+        Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
         s.error?.let { MessageStrip(it, true, vm::clearError) }
         if (s.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (s.login != null) {
@@ -254,22 +334,24 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
             Text("Waiting for authorization… expires in ${s.login.expires / 60} minutes. Return here after approving.", fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
             TextButton(onClick = vm::cancelLogin) { Text("Cancel sign-in") }
         } else if (tokenMode) {
-            Text("Connect a personal access token", style = MaterialTheme.typography.titleMedium)
-            Text("Prefer a fine-grained token with only the repositories you select. No password is ever needed. Paste the token here, never in chat.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 10.dp))
-            OutlinedTextField(token, { token = it }, label = { Text("GitHub access token") }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true, modifier = Modifier.fillMaxWidth())
-            Button(onClick = { vm.connect(token); token = "" }, enabled = token.isNotBlank() && !s.busy, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(10.dp)) { Text("Connect securely") }
+            Text("Connect your workspace", style = MaterialTheme.typography.titleLarge)
+            Text("Use a fine-grained token to choose exactly which repositories Forge can access.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
+            OutlinedTextField(token, { token = it }, label = { Text("Personal access token") }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true, modifier = Modifier.fillMaxWidth())
+            Button(onClick = { vm.connect(token); token = "" }, enabled = token.isNotBlank() && !s.busy, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(10.dp)) { Icon(Icons.Outlined.Lock, null, Modifier.size(17.dp)); Text("Connect securely", Modifier.padding(start = 8.dp)) }
             TextButton(onClick = { openLink("https://github.com/settings/personal-access-tokens/new") }) { Text("Create a fine-grained token on GitHub") }
-            TextButton(onClick = { tokenMode = false; token = "" }) { Text("Use device sign-in instead") }
+            TextButton(onClick = { tokenMode = false; token = "" }) { Text("Advanced: OAuth device sign-in") }
         } else {
             OutlinedTextField(client, { client = it }, label = { Text("GitHub OAuth app client ID") }, supportingText = { Text("Public identifier, not a secret. The registered OAuth app must have device flow enabled.") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             Button(onClick = { vm.deviceLogin(client) }, enabled = client.isNotBlank() && !s.busy, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(10.dp)) { Text("Connect with GitHub") }
             Text("Device sign-in requests repo, read:user, notifications and workflow scopes for the full workspace. For narrower repository access, use a fine-grained token instead.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
             TextButton(onClick = { tokenMode = true }) { Text("Use a fine-grained token instead") }
         }
-        HorizontalDivider(Modifier.padding(vertical = 24.dp))
+        } }
+        Spacer(Modifier.height(24.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Icon(Icons.Outlined.VerifiedUser, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary); Text("Encrypted with Android Keystore.\nCredentials stay on your device. No analytics.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Spacer(Modifier.height(24.dp))
     }
+}
 }
 
 @Composable fun ActionSheet(form: Form, busy: Boolean, onDismiss: () -> Unit, onSubmit: (Map<String, String>) -> Unit) {

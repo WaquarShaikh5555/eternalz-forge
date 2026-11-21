@@ -23,11 +23,11 @@ data class ForgeState(
     val detailReturn: Screen = Screen.REPOSITORY, val title: String = "", val detail: String = "", val detailKind: String = "", val detailId: String = "",
     val text: String = "", val original: String = "", val fileSha: String = "", val fileHead: String = "",
     val fileMode: String = "100644", val draft: ChangeSet? = null, val form: Form? = null, val login: DeviceLogin? = null,
-    val theme: String = "System", val recent: List<String> = emptyList(), val pins: List<String> = emptyList(), val compactHome: Boolean = false,
+    val theme: String = "Light", val recent: List<String> = emptyList(), val pins: List<String> = emptyList(), val compactHome: Boolean = false,
 )
 
 class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
-    private val mutable = MutableStateFlow(ForgeState(theme = vault.preference("theme", "System"), compactHome = vault.preference("compact") == "true"))
+    private val mutable = MutableStateFlow(ForgeState(theme = vault.preference("theme", "Light"), compactHome = vault.preference("compact") == "true"))
     val state = mutable.asStateFlow()
     private var api = GitHubApi()
     private var job: Job? = null
