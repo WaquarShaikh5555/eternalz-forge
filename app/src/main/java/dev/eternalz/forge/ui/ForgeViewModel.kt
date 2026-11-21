@@ -16,7 +16,7 @@ data class Form(val kind: String, val title: String, val fields: List<Field> = e
 data class DeviceLogin(val code: String, val uri: String, val expires: Int)
 data class ForgeState(
     val screen: Screen = Screen.HOME, val account: Account? = null, val accounts: List<Account> = emptyList(),
-    val busy: Boolean = false, val error: String? = null, val notice: String? = null,
+    val busy: Boolean = false, val authorizing: Boolean = false, val error: String? = null, val notice: String? = null,
     val repositories: List<Repository> = emptyList(), val entries: List<Entry> = emptyList(),
     val repo: Repository? = null, val branch: String = "", val path: String = "", val tab: String = "Code", val page: Int = 1,
     val query: String = "", val searchType: String = "repositories", val listFilter: String = "All",
@@ -33,6 +33,7 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
     private var job: Job? = null
     private var authJob: Job? = null
     private var generation = 0
+    private var authAttempt = 0
     private fun update(block: (ForgeState) -> ForgeState) { mutable.value = block(mutable.value) }
     init { restore() }
     private fun restore() {
@@ -66,40 +67,57 @@ class ForgeViewModel(private val vault: SecureVault) : ViewModel() {
             load()
         }
     }
-    fun switchAccount(id: String) { if (state.value.busy) return; authJob?.cancel(); job?.cancel(); generation++; vault.switch(id); restore() }
+    fun switchAccount(id: String) { if (state.value.busy) return; cancelLogin(); job?.cancel(); generation++; vault.switch(id); restore() }
     fun disconnect() {
         val id = state.value.account?.id ?: return
-        authJob?.cancel(); job?.cancel(); generation++; vault.disconnect(id); restore()
+        cancelLogin(); job?.cancel(); generation++; vault.disconnect(id); restore()
     }
-    fun deviceLogin(clientId: String) {
-        if (clientId.isBlank() || state.value.busy) return
+    fun deviceLogin(clientId: String, privateRepositories: Boolean = false, workflowFiles: Boolean = false) {
+        if (state.value.busy || state.value.authorizing) return
+        if (!DeviceAuthorization.validClientId(clientId)) {
+            update { it.copy(error = "This build needs the app owner's one-time GitHub sign-in setup. No user token is required.") }
+            return
+        }
         authJob?.cancel()
+        val attempt = ++authAttempt
+        update { it.copy(authorizing = true, error = null, login = null) }
         authJob = viewModelScope.launch {
             try {
                 val guest = GitHubApi()
-                val data = guest.oauth("device/code", obj("client_id" to clientId.trim(), "scope" to "repo read:user notifications workflow"))
-                if (data.has("error")) error(data.text("error_description").ifBlank { data.text("error") })
-                val seconds = data.optInt("expires_in", 900)
-                update { it.copy(login = DeviceLogin(data.text("user_code"), "https://github.com/login/device", seconds), error = null) }
+                val data = guest.oauth("device/code", obj("client_id" to clientId, "scope" to DeviceAuthorization.scopes(privateRepositories, workflowFiles)))
+                if (data.has("error")) error(DeviceAuthorization.errorMessage(data.text("error")))
+                val seconds = data.optInt("expires_in", 900).coerceIn(1, 3600)
+                val deviceCode = data.getString("device_code")
+                val userCode = data.getString("user_code")
+                require(deviceCode.isNotBlank() && userCode.isNotBlank()) { "GitHub returned an invalid sign-in code. Please try again." }
+                update { it.copy(login = DeviceLogin(userCode, "https://github.com/login/device", seconds)) }
                 var interval = data.optInt("interval", 5).coerceAtLeast(5)
                 withTimeout(seconds * 1000L) {
                     while (isActive) {
                         delay(interval * 1000L)
-                        val reply = guest.oauth("oauth/access_token", obj("client_id" to clientId.trim(), "device_code" to data.text("device_code"), "grant_type" to "urn:ietf:params:oauth:grant-type:device_code"))
+                        val reply = guest.oauth("oauth/access_token", obj("client_id" to clientId, "device_code" to deviceCode, "grant_type" to "urn:ietf:params:oauth:grant-type:device_code"))
                         when (reply.text("error")) {
                             "authorization_pending" -> Unit
-                            "slow_down" -> interval += 5
-                            "" -> { update { it.copy(login = null) }; connect(reply.getString("access_token")); return@withTimeout }
-                            else -> error(reply.text("error_description").ifBlank { "Device sign-in failed. Start again." })
+                            "slow_down" -> interval = DeviceAuthorization.nextInterval(interval, reply.optInt("interval"))
+                            "" -> {
+                                val accessToken = reply.getString("access_token")
+                                require(accessToken.isNotBlank()) { "GitHub did not return an access token. Try again." }
+                                update { it.copy(login = null) }; connect(accessToken); return@withTimeout
+                            }
+                            else -> error(DeviceAuthorization.errorMessage(reply.text("error")))
                         }
                     }
                 }
             } catch (e: TimeoutCancellationException) { update { it.copy(login = null, error = "Sign-in code expired. Start again.") } }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) { update { it.copy(login = null, error = e.message ?: "Sign-in failed.") } }
+            finally { if (attempt == authAttempt) update { it.copy(authorizing = false) } }
         }
     }
-    fun cancelLogin() { authJob?.cancel(); update { it.copy(login = null) } }
+    fun cancelLogin() {
+        ++authAttempt; authJob?.cancel()
+        update { it.copy(login = null, authorizing = false) }
+    }
     fun navigate(screen: Screen) {
         if (state.value.busy) return
         update { it.copy(screen = screen, entries = emptyList(), page = 1, error = null, form = null) }

@@ -34,6 +34,8 @@ class DesignScreenshotTest {
         compose.setContent { ForgeTheme("Light") { ConnectScreen(ForgeState(), vm, {}) } }
         compose.onNodeWithText("Your code.\nWithin reach.").assertIsDisplayed()
         compose.onNodeWithText("Connect your workspace").assertIsDisplayed()
+        compose.onNodeWithText("Continue with GitHub").assertIsDisplayed()
+        compose.onNodeWithText("Personal access token").assertDoesNotExist()
         val image = compose.onRoot().captureToImage()
         val background = image.toPixelMap()[2, 2]
         assertTrue("Sign-in must paint a light background rather than the Android dark window", background.red > 0.9f && background.green > 0.9f && background.blue > 0.9f)

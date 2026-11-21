@@ -3,6 +3,12 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+// Public OAuth identifier only. Client secrets must NEVER be placed in the APK.
+val githubClientId = providers.gradleProperty("forge.githubClientId")
+    .orElse(providers.environmentVariable("GITHUB_OAUTH_CLIENT_ID")).getOrElse("").trim()
+require(githubClientId.isEmpty() || githubClientId.matches(Regex("[A-Za-z0-9_.-]{1,128}"))) {
+    "forge.githubClientId must be a public GitHub OAuth client ID, not a URL or secret."
+}
 android {
     namespace = "dev.eternalz.forge"
     compileSdk = 35
@@ -10,8 +16,9 @@ android {
         applicationId = "dev.eternalz.forge"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
+        buildConfigField("String", "GITHUB_OAUTH_CLIENT_ID", "\"$githubClientId\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -50,4 +57,15 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+}
+
+val verifyGitHubSignInConfiguration = tasks.register("verifyGitHubSignInConfiguration") {
+    doLast {
+        check(githubClientId.isNotBlank()) {
+            "Release sign-in is not configured. Set the PUBLIC GITHUB_OAUTH_CLIENT_ID or -Pforge.githubClientId. Never embed a client secret. See docs/github-sign-in.md."
+        }
+    }
+}
+tasks.configureEach {
+    if (name == "preReleaseBuild") dependsOn(verifyGitHubSignInConfiguration)
 }

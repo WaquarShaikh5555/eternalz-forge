@@ -49,27 +49,24 @@ Android toolchain; see [tooling setup](docs/android-tooling.md).
 
 ## Connect GitHub
 
-**Never put credentials in this repository or in chat.** There are two in-app paths:
+The default is now **Continue with GitHub**: approve a short-lived device code in
+GitHub's browser page and return to Forge. Users no longer need to create/paste
+personal access tokens or enter client IDs. Manual-token connection is an advanced
+fallback, not the onboarding path.
 
-1. **Device sign-in:** enter a public GitHub OAuth app client ID with device flow
-   enabled. Approve the displayed code on `https://github.com/login/device`.
-   The full-workspace flow requests `repo`, `read:user`, `notifications` and
-   `workflow`. No client secret is embedded or required. This checkout does not
-   contain a registered product-owned OAuth client.
-2. **Fine-grained personal token:** use the password-masked in-app field. Select
-   only needed repositories and permissions in GitHub. Missing permissions cause
-   explicit failures; the app does not silently escalate access.
+**One-time product-owner requirement:** register Eternalz Forge as a GitHub OAuth
+app, enable Device Flow and configure its **public client ID** in the build.
+The repository variable `GITHUB_OAUTH_CLIENT_ID` is wired into both CI jobs.
+No confidential client secret belongs in this Android application.
 
-Common fine-grained repository permissions: Contents (read/write for editing),
-Issues, Pull requests, Actions (read/write for rerun/cancel), Checks (read),
-Administration (only if managing settings/deletion), Workflows (only when editing
-workflow files), Metadata (read). Availability of user/notification/search APIs
-varies by credential type. Start read-only and add permissions only as needed.
-Organization SSO/policies and branch protection remain authoritative.
+See **[GitHub sign-in setup](docs/github-sign-in.md)** for the owner-only steps,
+permission choices and testing boundary. Until that public ID is configured,
+debug builds clearly show an owner-setup message; they do not claim working login.
+Release builds reject missing sign-in configuration.
 
-Disconnect removes the account and its local drafts from this device. Revoke its
-credential separately through GitHub's application/token settings. The app links
-there with confirmation.
+Private-repository and workflow-file permissions are explicit opt-ins. Access
+still requires the user's approval and respects GitHub permissions, organization
+policies and branch protection. Disconnect is local; revoke access in GitHub settings.
 
 ## Architecture and safety
 

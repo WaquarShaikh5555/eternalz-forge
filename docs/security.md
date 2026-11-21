@@ -88,7 +88,10 @@ plus non-force update. Root and merge commits require manual resolution.
 
 OAuth device flow is supported for a registered client with device flow enabled.
 The client ID is a public identifier; this checkout cannot register one on the
-product owner's behalf. The broad OAuth scopes are explained before approval.
+product owner's behalf. The public client ID is now build configuration, never an end-user input. Default
+OAuth scopes cover public repositories, profile and notifications; private-repository
+and workflow-file scopes require explicit opt-in. No delete_repo scope is requested.
+The scopes are explained before approval. See `github-sign-in.md`.
 A fine-grained PAT offers narrower repository selection; it is validated through
 /user, encrypted locally and expires according to its GitHub settings. A 401
 requires reconnection. Expiring GitHub App user-token refresh and installation

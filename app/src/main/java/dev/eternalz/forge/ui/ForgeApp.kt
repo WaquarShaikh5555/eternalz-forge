@@ -22,6 +22,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import dev.eternalz.forge.R
+import dev.eternalz.forge.BuildConfig
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -298,14 +301,17 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
         items(s.entries) { entry -> EntryRow(entry) { vm.open(entry) } }
         item { Row(Modifier.horizontalScroll(rememberScrollState()).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { SmallAction("Gists", Icons.Outlined.Code) { vm.accountList("Gists") }; SmallAction("Contributions", Icons.Outlined.CalendarMonth) { vm.contributions() }; SmallAction("Followers", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Followers") }; SmallAction("Following", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Following") } } }
         item { TextButton(onClick = { vm.form(Form("disconnect", "Disconnect @${s.account!!.login}?", warning = "Removes this account's credential, staged files, pins and recents from this device. Other accounts are untouched. This does NOT revoke access on GitHub; use Manage access or Tokens to revoke it there.", confirmation = s.account.login)) }, modifier = Modifier.padding(12.dp)) { Text("Disconnect this account", color = MaterialTheme.colorScheme.error) } }
-        item { Text("ETERNALZ FORGE / 0.2.0\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("ETERNALZ FORGE / 0.3.0\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
-@Composable fun ConnectScreen(s: ForgeState, vm: ForgeViewModel, openLink: (String) -> Unit, embedded: Boolean = false) {
+@Composable fun ConnectScreen(s: ForgeState, vm: ForgeViewModel, openLink: (String) -> Unit, embedded: Boolean = false, oauthClientId: String = BuildConfig.GITHUB_OAUTH_CLIENT_ID) {
     var token by remember { mutableStateOf("") } // Intentionally never saveable / persisted before validation.
-    var client by rememberSaveable { mutableStateOf("") }
-    var tokenMode by remember { mutableStateOf(true) }
+    var tokenMode by rememberSaveable { mutableStateOf(false) }
+    var privateRepositories by rememberSaveable { mutableStateOf(false) }
+    var workflowFiles by rememberSaveable { mutableStateOf(false) }
+    var setupRequired by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
     Column(Modifier.widthIn(max = 520.dp).fillMaxWidth().then(if(embedded) Modifier.heightIn(max = 650.dp) else Modifier.fillMaxHeight().systemBarsPadding()).verticalScroll(rememberScrollState()).padding(28.dp)) {
         if (!embedded) {
@@ -326,25 +332,45 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
         s.error?.let { MessageStrip(it, true, vm::clearError) }
-        if (s.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (s.busy || s.authorizing) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (s.login != null) {
-            Eyebrow("Enter this code on GitHub")
+            Eyebrow("1. Copy this one-time sign-in code")
             Text(s.login.code, fontFamily = Mono, fontSize = 30.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 16.dp))
-            Button(onClick = { openLink(s.login.uri) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) { Text("Continue on GitHub") }
+            TextButton(onClick = { clipboard.setText(AnnotatedString(s.login.code)) }) {
+                Icon(Icons.Outlined.ContentCopy, null, Modifier.size(16.dp)); Text("Copy sign-in code", Modifier.padding(start = 8.dp))
+            }
+            Button(onClick = { openLink(s.login.uri) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) { Text("2. Approve on GitHub") }
             Text("Waiting for authorization… expires in ${s.login.expires / 60} minutes. Return here after approving.", fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
             TextButton(onClick = vm::cancelLogin) { Text("Cancel sign-in") }
         } else if (tokenMode) {
-            Text("Connect your workspace", style = MaterialTheme.typography.titleLarge)
+            Text("Manual token connection", style = MaterialTheme.typography.titleLarge)
             Text("Use a fine-grained token to choose exactly which repositories Forge can access.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
             OutlinedTextField(token, { token = it }, label = { Text("Personal access token") }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true, modifier = Modifier.fillMaxWidth())
             Button(onClick = { vm.connect(token); token = "" }, enabled = token.isNotBlank() && !s.busy, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(10.dp)) { Icon(Icons.Outlined.Lock, null, Modifier.size(17.dp)); Text("Connect securely", Modifier.padding(start = 8.dp)) }
             TextButton(onClick = { openLink("https://github.com/settings/personal-access-tokens/new") }) { Text("Create a fine-grained token on GitHub") }
-            TextButton(onClick = { tokenMode = false; token = "" }) { Text("Advanced: OAuth device sign-in") }
+            TextButton(onClick = { tokenMode = false; token = "" }) { Text("Back to GitHub sign-in") }
         } else {
-            OutlinedTextField(client, { client = it }, label = { Text("GitHub OAuth app client ID") }, supportingText = { Text("Public identifier, not a secret. The registered OAuth app must have device flow enabled.") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            Button(onClick = { vm.deviceLogin(client) }, enabled = client.isNotBlank() && !s.busy, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(10.dp)) { Text("Connect with GitHub") }
-            Text("Device sign-in requests repo, read:user, notifications and workflow scopes for the full workspace. For narrower repository access, use a fine-grained token instead.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
-            TextButton(onClick = { tokenMode = true }) { Text("Use a fine-grained token instead") }
+            Text("Connect your workspace", style = MaterialTheme.typography.titleLarge)
+            Text("Sign in on GitHub and approve Forge. No password or personal token to paste here.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
+            Button(onClick = {
+                if (oauthClientId.isBlank()) setupRequired = true
+                else vm.deviceLogin(oauthClientId, privateRepositories, workflowFiles)
+            }, enabled = !s.busy && !s.authorizing, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(10.dp)) {
+                Icon(Icons.Outlined.OpenInNew, null, Modifier.size(18.dp))
+                Text(if (s.authorizing) "Getting sign-in code…" else "Continue with GitHub", Modifier.padding(start = 8.dp))
+            }
+            Text("You'll approve a short-lived code in your browser, then return here. Forge never sees your GitHub password.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(privateRepositories, { privateRepositories = it }, enabled = !s.authorizing)
+                Text("Include private repositories", fontSize = 12.sp)
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(workflowFiles, { workflowFiles = it }, enabled = !s.authorizing)
+                Text("Edit Actions workflow files", fontSize = 12.sp)
+            }
+            Text("Requests profile, notifications and public-repository read/write access. Private access uses GitHub's broader repo scope only if selected. Some administrative actions need additional permissions.", fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (s.authorizing) TextButton(onClick = vm::cancelLogin) { Text("Cancel sign-in") }
+            TextButton(onClick = { tokenMode = true }, enabled = !s.busy && !s.authorizing) { Text("Advanced: connect an existing token") }
         }
         } }
         Spacer(Modifier.height(24.dp))
@@ -352,6 +378,11 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
         Spacer(Modifier.height(24.dp))
     }
 }
+    if (setupRequired) AlertDialog(onDismissRequest = { setupRequired = false },
+        title = { Text("App owner setup needed") },
+        text = { Text("This development build has not been linked to Eternalz Forge's GitHub OAuth registration yet. The app owner must register it once, enable Device Flow, and configure its public client ID in the build. Regular users won't need to create tokens, register apps, or enter a client ID. No client secret belongs in the Android app.") },
+        confirmButton = { TextButton(onClick = { setupRequired = false; openLink("https://github.com/settings/applications/new") }) { Text("Owner: register app") } },
+        dismissButton = { TextButton(onClick = { setupRequired = false }) { Text("Close") } })
 }
 
 @Composable fun ActionSheet(form: Form, busy: Boolean, onDismiss: () -> Unit, onSubmit: (Map<String, String>) -> Unit) {

@@ -12,6 +12,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
+    env:
+      GITHUB_OAUTH_CLIENT_ID: ${{ vars.GITHUB_OAUTH_CLIENT_ID }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -44,6 +46,8 @@ jobs:
           retention-days: 7
 
   device-design:
+    env:
+      GITHUB_OAUTH_CLIENT_ID: ${{ vars.GITHUB_OAUTH_CLIENT_ID }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
