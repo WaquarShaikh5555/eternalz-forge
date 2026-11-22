@@ -46,7 +46,10 @@ jobs:
           Download the .apk asset directly; no ZIP extraction required. This prerelease intentionally has no stable update metadata and is excluded from in-app stable updates. No private signing key is published or embedded in repository files.
           NOTES
           # Do not overwrite existing releases or assets.
-          gh release create v0.3.3-test "$apk" "$apk.sha256" --target "$sha" --prerelease --title '0.3.3 sign-in recovery TEST APK (not update-compatible)' --notes-file "$RUNNER_TEMP/notes.md"
+          # Draft metadata was created through the repository connection after the
+          # runner token was denied permission to create a release. Upload only;
+          # the draft will be published separately after checking both assets.
+          gh release upload v0.3.3-test "$apk" "$apk.sha256"
       - name: Bounded publication diagnostics
         if: failure()
         run: |
