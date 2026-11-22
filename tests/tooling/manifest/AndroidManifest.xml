@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ruleid: android-cleartext-manifest -->
+    <application android:usesCleartextTraffic="true" />
+    <!-- ruleid: android-release-debuggable -->
+    <application android:debuggable="true" />
+    <!-- ok: android-cleartext-manifest -->
+    <application android:usesCleartextTraffic="false" />
+    <!-- ok: android-release-debuggable -->
+    <application android:debuggable="false" />
+</manifest>
