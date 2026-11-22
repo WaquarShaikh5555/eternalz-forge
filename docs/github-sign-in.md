@@ -155,3 +155,21 @@ tests passed. These are injected synthetic tests, not a live GitHub account gran
 Publication is blocked on permanent private signing-key setup; see
 [APK update status](android-updates.md). Do not use the earlier 0.3.1 download to
 test the recovery changes.
+
+## 0.3.3 explicit deletion permission
+
+Repository deletion is now a separate, initially unchecked permission in
+**Choose permissions → Repository deletion**. It adds `delete_repo` only after
+the user opts in and approves GitHub's consent. Existing accounts can use
+**You → Reconnect / change permissions** without disconnecting or deleting local
+data. Existing private/workflow selections are retained when reconnecting.
+OAuth grants apply to all repositories the user administers, not one selected
+repository; granting deletion does not delete anything automatically.
+
+Each deletion shows the exact `owner/repository` name, provides a copy button,
+and still requires exact confirmation. Copying does NOT fill the field or submit.
+The view model verifies the submitted confirmation and pinned repository target,
+checks GitHub administrator permissions, and lets GitHub enforce the final DELETE.
+No real repository was deleted during development/testing. OAuth without
+`delete_repo`, organization restrictions/SSO, and fine-grained tokens without
+Administration: write can still prevent deletion; these are explained on failure.

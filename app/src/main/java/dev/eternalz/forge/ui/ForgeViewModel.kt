@@ -94,7 +94,7 @@ class ForgeViewModel(private val vault: SecureVault, private val authApi: (Strin
         val id = state.value.account?.id ?: return
         cancelLogin(); job?.cancel(); generation++; vault.disconnect(id); restore()
     }
-    fun deviceLogin(clientId: String, privateRepositories: Boolean = false, workflowFiles: Boolean = false) {
+    fun deviceLogin(clientId: String, privateRepositories: Boolean = false, workflowFiles: Boolean = false, deleteRepositories: Boolean = false) {
         if (state.value.busy || state.value.authorizing) return
         if (!DeviceAuthorization.validClientId(clientId)) {
             update { it.copy(error = "This build needs the app owner's GitHub sign-in configuration.") }
@@ -105,7 +105,7 @@ class ForgeViewModel(private val vault: SecureVault, private val authApi: (Strin
         update { it.copy(authorizing = true, error = null, login = null) }
         authJob = viewModelScope.launch {
             try {
-                val data = authApi("").oauth("device/code", obj("client_id" to clientId, "scope" to DeviceAuthorization.scopes(privateRepositories, workflowFiles)))
+                val data = authApi("").oauth("device/code", obj("client_id" to clientId, "scope" to DeviceAuthorization.scopes(privateRepositories, workflowFiles, deleteRepositories)))
                 if (data.has("error")) error(DeviceAuthorization.errorMessage(data.text("error")))
                 val seconds = data.optInt("expires_in", 900).coerceIn(1, 3600)
                 require(data.getString("device_code").isNotBlank() && data.getString("user_code").isNotBlank())
@@ -404,6 +404,9 @@ class ForgeViewModel(private val vault: SecureVault, private val authApi: (Strin
     }
     fun apply(form: Form, values: Map<String, String>) {
         if (state.value.busy) return
+        if (form.confirmation.isNotBlank() && values["__confirmation"] != form.confirmation) {
+            update { it.copy(error = "Enter the exact confirmation text before continuing.") }; return
+        }
         if (form.kind == "disconnect") { disconnect(); return }
         if (form.kind == "discard") { discard(); return }
         work {
@@ -416,7 +419,24 @@ class ForgeViewModel(private val vault: SecureVault, private val authApi: (Strin
                     api.mutate("POST", "/user/repos", obj("name" to name, "description" to v("description"), "private" to (v("visibility") != "public"), "auto_init" to true))
                 }
                 "fork" -> api.mutate("POST", "$base/forks", obj())
-                "deleteRepo" -> api.mutate("DELETE", base)
+                "deleteRepo" -> {
+                    require(repo != null && form.target == repo.fullName && form.confirmation == repo.fullName) {
+                        "The selected repository changed. Reopen deletion confirmation."
+                    }
+                    val scopes = s.account?.scopes.orEmpty().split(',').map(String::trim).toSet()
+                    require("delete_repo" in scopes || ("public_repo" !in scopes && "repo" !in scopes)) {
+                        "Your GitHub sign-in does not allow deletion. Open You → Reconnect / change permissions, enable Repository deletion, and approve on GitHub. Nothing was deleted."
+                    }
+                    val permissions = api.json(base).optJSONObject("permissions")
+                    require(permissions?.optBoolean("admin") != false) {
+                        "Only a repository administrator can delete this repository. Organization policies may also prevent deletion."
+                    }
+                    try { api.mutate("DELETE", base) }
+                    catch (e: ApiFailure) {
+                        if (e.status == 403) error("GitHub denied deletion. Reconnect with Repository deletion enabled (delete_repo), or check fine-grained token Administration: write, organization SSO and repository admin rights. Nothing was deleted.")
+                        throw e
+                    }
+                }
                 "settings" -> { require(v("visibility") in listOf("private", "public") && v("archived") in listOf("true", "false")) { "Visibility must be private/public and archived must be true/false." }; api.mutate("PATCH", base, obj("name" to required("name"), "description" to v("description"), "private" to (v("visibility") != "public"), "archived" to (v("archived") == "true"))) }
                 "star" -> api.mutate("PUT", "/user/starred/${repo!!.fullName}")
                 "unstar" -> api.mutate("DELETE", "/user/starred/${repo!!.fullName}")

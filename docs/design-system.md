@@ -84,3 +84,16 @@ The updated [sign-in capture](screenshots/sign-in-light.jpg) was inspected from
 [CI run 44910837997](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44910837997).
 All six emulator UI/security tests passed. Owner registration and live OAuth
 approval are separate from these fixture/UI tests; see [GitHub setup](github-sign-in.md).
+
+## 0.3.3 decluttering
+
+The default workspace now emphasizes a compact repository list, a search entry,
+and two text shortcuts. Oversized shortcut cards and marketing copy are removed;
+activity, pins and recents are behind an explicit expansion. Sign-in uses a single
+heading and optional permissions are collapsed by default (selected permissions
+remain summarized). Repository navigation prioritizes Code, Issues and Pull
+requests; less frequent destinations are in More. Repository deletion confirmations
+show the full owner/name and a copy action without auto-confirming destruction.
+
+New screenshots and CI results for this revision are pending; prior captures above
+are historical rather than proof of this revision.

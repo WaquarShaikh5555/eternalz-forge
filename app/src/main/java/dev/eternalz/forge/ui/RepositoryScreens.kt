@@ -38,9 +38,21 @@ import io.noties.markwon.Markwon
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SmallAction(s.branch, Icons.Outlined.AccountTree, !s.busy) { vm.tab("Branches") }
                 SmallAction(if(repo.fullName in s.pins) "Unpin" else "Pin", Icons.Outlined.PushPin, !s.busy, vm::pin)
-                SmallAction("Settings", Icons.Outlined.Settings, !s.busy) { vm.tab("Settings") }
             }
-            Chips(listOf("Code", "Issues", "Pull requests", "Actions", "Commits", "Branches", "Releases", "Tags"), s.tab, vm::tab)
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(start = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Code", "Issues", "Pull requests").forEach { tab -> FilterChip(s.tab == tab, { vm.tab(tab) }, label = { Text(tab) }) }
+                }
+                var more by remember { mutableStateOf(false) }
+                Box {
+                    TextButton(onClick = { more = true }) { Text(if (s.tab in listOf("Code", "Issues", "Pull requests")) "More" else s.tab) }
+                    DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                        listOf("Actions", "Commits", "Branches", "Releases", "Tags", "Settings").forEach { tab ->
+                            DropdownMenuItem(text = { Text(tab) }, onClick = { more = false; vm.tab(tab) })
+                        }
+                    }
+                }
+            }
             HorizontalDivider(Modifier.padding(top = 10.dp))
         }
         if(s.tab == "Settings") {
@@ -50,7 +62,7 @@ import io.noties.markwon.Markwon
             item { EntryRow(Entry("Fork repository", "Creates a fork in your GitHub account"), { vm.form(Form("fork", "Fork ${repo.name}?", warning = "GitHub creates the fork asynchronously. Organization policies may restrict forking.")) }) }
             item { EntryRow(Entry("Star repository", "Save it to your GitHub starred list"), { vm.form(Form("star", "Star ${repo.name}?")) }) }
             item { EntryRow(Entry("Unstar repository", "Remove it from your GitHub starred list"), { vm.form(Form("unstar", "Unstar ${repo.name}?")) }) }
-            item { EntryRow(Entry("Delete repository", "Permanent. Includes issues, settings and repository data."), { vm.form(Form("deleteRepo", "Delete ${repo.fullName}?", warning = "This permanently deletes the remote repository. This cannot be undone in Eternalz Forge. You need repository administration/delete permission.", confirmation = repo.fullName)) }) }
+            item { EntryRow(Entry("Delete repository", "Permanent. Includes issues, settings and repository data."), { vm.form(Form("deleteRepo", "Delete ${repo.fullName}?", warning = "This permanently deletes the remote repository. This cannot be undone in Eternalz Forge. You must be a repository administrator. GitHub OAuth sign-in also needs the optional delete_repo permission. If denied, use You → Reconnect / change permissions → Repository deletion.", confirmation = repo.fullName, target = repo.fullName)) }) }
         } else {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

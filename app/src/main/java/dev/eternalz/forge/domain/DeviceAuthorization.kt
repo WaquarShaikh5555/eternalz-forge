@@ -4,11 +4,12 @@ package dev.eternalz.forge.domain
 object DeviceAuthorization {
     fun validClientId(value: String): Boolean = value.matches(Regex("[A-Za-z0-9_.-]{1,128}"))
 
-    fun scopes(privateRepositories: Boolean, workflowFiles: Boolean): String = buildList {
+    fun scopes(privateRepositories: Boolean, workflowFiles: Boolean, deleteRepositories: Boolean = false): String = buildList {
         add(if (privateRepositories) "repo" else "public_repo")
         add("read:user")
         add("notifications")
         if (workflowFiles) add("workflow")
+        if (deleteRepositories) add("delete_repo")
     }.joinToString(" ")
 
     fun nextInterval(current: Int, serverInterval: Int = 0): Int = maxOf(current + 5, serverInterval)

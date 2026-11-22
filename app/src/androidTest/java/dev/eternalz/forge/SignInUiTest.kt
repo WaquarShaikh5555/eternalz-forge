@@ -10,6 +10,14 @@ import org.junit.Test
 
 class SignInUiTest {
     @get:Rule val compose = createComposeRule()
+    @Test fun optionalPermissionsAreCollapsedUntilRequested() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val vm = ForgeViewModel(SecureVault(context))
+        compose.setContent { ForgeTheme { ConnectScreen(ForgeState(), vm, {}, oauthClientId = "test") } }
+        compose.onNodeWithText("Repository deletion").assertDoesNotExist()
+        compose.onNodeWithText("Choose permissions").performClick()
+        compose.onNodeWithText("Repository deletion").performScrollTo().assertIsDisplayed()
+    }
     @Test fun normalUsersNeverSeeAClientIdOrTokenField() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val vm = ForgeViewModel(SecureVault(context))

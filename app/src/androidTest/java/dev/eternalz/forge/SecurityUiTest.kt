@@ -16,12 +16,33 @@ class SecurityUiTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun destructiveActionRequiresExactConfirmation() {
-        var submitted = false
-        compose.setContent { ForgeTheme { ActionSheet(Form("deleteRepo", "Delete repository", confirmation = "owner/repo"), false, {}, { submitted = true }) } }
-        compose.onNodeWithText("Confirm").assertIsNotEnabled()
-        compose.onNodeWithText("Type owner/repo to confirm").performTextInput("owner/repo")
-        compose.onNodeWithText("Confirm").assertIsEnabled().performClick()
-        assertTrue(submitted)
+        var submitted: Map<String, String>? = null
+        lateinit var clipboard: androidx.compose.ui.platform.ClipboardManager
+        compose.setContent {
+            clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+            ForgeTheme { ActionSheet(Form("deleteRepo", "Delete repository", confirmation = "Waquarshaikh/xx", target = "Waquarshaikh/xx"), false, {}, { submitted = it }) }
+        }
+        compose.onNodeWithText("Waquarshaikh/xx").assertIsDisplayed()
+        compose.onNodeWithText("Delete repository permanently").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Copy repository name").performClick()
+        compose.runOnIdle { assertEquals("Waquarshaikh/xx", clipboard.getText()?.text) }
+        compose.onNodeWithText("Delete repository permanently").assertIsNotEnabled()
+        compose.onNodeWithText("Type Waquarshaikh/xx to confirm").performTextInput("xx")
+        compose.onNodeWithText("Delete repository permanently").assertIsNotEnabled()
+        compose.onNodeWithText("Type Waquarshaikh/xx to confirm").performTextClearance()
+        compose.onNodeWithText("Type Waquarshaikh/xx to confirm").performTextInput("Waquarshaikh/xx")
+        compose.onNodeWithText("Delete repository permanently").assertIsEnabled().performClick()
+        assertEquals("Waquarshaikh/xx", submitted?.get("__confirmation"))
+    }
+
+    @Test fun missingConfirmationIsRejectedBeforeAnyRemoteCall() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.runOnIdle {
+            val vm = ForgeViewModel(SecureVault(context))
+            vm.apply(Form("deleteRepo", "Delete", confirmation = "owner/repo", target = "owner/repo"), emptyMap())
+            assertEquals("Enter the exact confirmation text before continuing.", vm.state.value.error)
+            assertFalse(vm.state.value.busy)
+        }
     }
 
     @Test fun accountDraftsAndCredentialsAreIsolated() {

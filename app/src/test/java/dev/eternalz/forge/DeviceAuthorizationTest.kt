@@ -14,6 +14,10 @@ class DeviceAuthorizationTest {
     @Test fun broaderScopesNeedExplicitOptIn() {
         assertEquals(setOf("repo", "read:user", "notifications", "workflow"), DeviceAuthorization.scopes(true, true).split(' ').toSet())
     }
+    @Test fun deletionRequiresItsOwnExplicitOptIn() {
+        assertEquals(setOf("public_repo", "read:user", "notifications", "delete_repo"), DeviceAuthorization.scopes(false, false, true).split(' ').toSet())
+        assertFalse(DeviceAuthorization.scopes(true, true).split(' ').contains("delete_repo"))
+    }
     @Test fun slowDownHonorsBothRequiredIncreaseAndGitHubsInterval() {
         assertEquals(10, DeviceAuthorization.nextInterval(5))
         assertEquals(30, DeviceAuthorization.nextInterval(5, 30))

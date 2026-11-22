@@ -193,12 +193,11 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
 @Composable fun WorkspaceContent(s: ForgeState, onRepo: (String) -> Unit, onCreate: () -> Unit,
     onSearch: () -> Unit, onAll: () -> Unit, onIssues: () -> Unit, onReviews: () -> Unit,
     onDraft: () -> Unit, onCustomize: () -> Unit, onActivity: (Entry) -> Unit) {
+    var showActivity by rememberSaveable { mutableStateOf(false) }
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
             Column(Modifier.padding(horizontal = 20.dp).padding(top = 12.dp, bottom = 16.dp)) {
-                Eyebrow("YOUR WORKSPACE")
-                Text("Ready when you are.", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 8.dp))
-                Text("A clear view of what you're building.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                Text("Workspace", style = MaterialTheme.typography.headlineMedium)
                 Surface(onClick = onSearch, color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Search, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -210,8 +209,8 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
         }
         item {
             Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                WorkspaceShortcut("My issues", "Assigned to you", Icons.Outlined.Adjust, Modifier.weight(1f), onIssues)
-                WorkspaceShortcut("Reviews", "Your next review", Icons.Outlined.RateReview, Modifier.weight(1f), onReviews)
+                TextButton(onClick = onIssues) { Text("My issues") }
+                TextButton(onClick = onReviews) { Text("Reviews") }
             }
         }
         if(s.draft != null) item {
@@ -226,33 +225,23 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
                 }
             }
         }
-        if(s.pins.isNotEmpty()) {
+        if(showActivity && s.pins.isNotEmpty()) {
             item { Section("Pinned", "Manage") { onAll() } }
             items(s.pins) { name -> EntryRow(Entry(name, "Pinned workspace", kind = "repository"), { onRepo(name) }) }
         }
         item { Section("Repositories", "View all", onAll) }
-        items(s.repositories.take(if(s.compactHome) 3 else 5), key = { it.fullName }) { repo -> RepoRow(repo) { onRepo(repo.fullName) } }
+        items(s.repositories.take(5), key = { it.fullName }) { repo -> EntryRow(Entry(repo.fullName, repo.description, if (repo.privateRepo) "Private" else "", kind = "repository"), { onRepo(repo.fullName) }) }
         if(s.repositories.isEmpty() && !s.busy) item { EmptyState("Start something worth building", "Your accessible repositories will appear here. Create one or check your connected permissions.") }
         item {
             TextButton(onClick = onCreate, modifier = Modifier.padding(horizontal = 12.dp)) {
                 Icon(Icons.Outlined.Add, null, Modifier.size(17.dp)); Text("New repository", Modifier.padding(start = 8.dp), fontSize = 12.sp)
             }
         }
-        if(!s.compactHome) {
+        item { TextButton(onClick = { showActivity = !showActivity }, modifier = Modifier.padding(horizontal = 12.dp)) { Text(if (showActivity) "Hide activity & recents" else "Show activity & recents") } }
+        if(showActivity) {
             if(s.recent.isNotEmpty()) { item { Section("Recently opened") }; items(s.recent.take(2)) { name -> EntryRow(Entry(name, kind = "repository"), { onRepo(name) }) } }
-            item { Section("Activity", "Customize", onCustomize) }
+            item { Section("Activity") }
             items(s.entries) { entry -> EntryRow(entry) { onActivity(entry) } }
-        } else item { TextButton(onClick = onCustomize, modifier = Modifier.padding(horizontal = 12.dp)) { Text("Show activity") } }
-    }
-}
-
-@Composable private fun WorkspaceShortcut(title: String, subtitle: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Surface(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Column(Modifier.padding(15.dp)) {
-            Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
-            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
         }
     }
 }
@@ -297,10 +286,16 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
 
 @Composable fun AccountScreen(s: ForgeState, vm: ForgeViewModel, openLink: (String) -> Unit) {
     var addAccount by remember { mutableStateOf(false) }
-    if (addAccount) { ModalBottomSheet(onDismissRequest = { addAccount = false }) { ConnectScreen(s.copy(account = null), vm, openLink, embedded = true) }; return }
+    var wasAuthorizing by remember { mutableStateOf(false) }
+    LaunchedEffect(s.authorizing, s.login, s.error) {
+        if (s.authorizing) wasAuthorizing = true
+        else if (wasAuthorizing && s.login == null && s.error == null) { addAccount = false; wasAuthorizing = false }
+    }
+    if (addAccount) { ModalBottomSheet(onDismissRequest = { addAccount = false }) { ConnectScreen(s, vm, openLink, embedded = true) }; return }
     LazyColumn {
         item { Heading(s.account!!.name.ifBlank { s.account.login }, "@${s.account.login}"); Section("Connected accounts", "Add account") { addAccount = true } }
         items(s.accounts) { account -> EntryRow(Entry(account.login, if(account.id == s.account?.id) "Active account · encrypted on this device" else "Tap to switch workspace", if(account.id == s.account?.id) "Active" else "", kind = "user"), { vm.switchAccount(account.id) }) }
+        item { TextButton(onClick = { addAccount = true }) { Text("Reconnect / change permissions") } }
         item { Section("Appearance"); Chips(listOf("System", "Dark", "Light"), s.theme, vm::theme) }
         item { Section("Connected permissions"); Text(s.account!!.scopes, Modifier.padding(horizontal = 20.dp), fontFamily = Mono, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("Fine-grained tokens: review exact repository selection and permissions on GitHub. A denied action does not automatically request broader access.", Modifier.padding(20.dp, 12.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { SmallAction("Manage access", Icons.Outlined.Security) { openLink("https://github.com/settings/applications") }; SmallAction("Tokens", Icons.Outlined.Key) { openLink("https://github.com/settings/personal-access-tokens") } } }
@@ -309,15 +304,17 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
         item { Row(Modifier.horizontalScroll(rememberScrollState()).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { SmallAction("Gists", Icons.Outlined.Code) { vm.accountList("Gists") }; SmallAction("Contributions", Icons.Outlined.CalendarMonth) { vm.contributions() }; SmallAction("Followers", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Followers") }; SmallAction("Following", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Following") } } }
         item { TextButton(onClick = { vm.form(Form("disconnect", "Disconnect @${s.account!!.login}?", warning = "Removes this account's credential, staged files, pins and recents from this device. Other accounts are untouched. This does NOT revoke access on GitHub; use Manage access or Tokens to revoke it there.", confirmation = s.account.login)) }, modifier = Modifier.padding(12.dp)) { Text("Disconnect this account", color = MaterialTheme.colorScheme.error) } }
         item { UpdateButton(s, vm) }
-        item { Text("ETERNALZ FORGE / 0.3.2\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("ETERNALZ FORGE / 0.3.3\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
 @Composable fun ConnectScreen(s: ForgeState, vm: ForgeViewModel, openLink: (String) -> Unit, embedded: Boolean = false, oauthClientId: String = BuildConfig.GITHUB_OAUTH_CLIENT_ID) {
     var token by remember { mutableStateOf("") } // Intentionally never saveable / persisted before validation.
     var tokenMode by rememberSaveable { mutableStateOf(false) }
-    var privateRepositories by rememberSaveable { mutableStateOf(false) }
-    var workflowFiles by rememberSaveable { mutableStateOf(false) }
+    var privateRepositories by rememberSaveable { mutableStateOf(s.account?.scopes?.split(',')?.any { it.trim() == "repo" } == true) }
+    var workflowFiles by rememberSaveable { mutableStateOf(s.account?.scopes?.split(',')?.any { it.trim() == "workflow" } == true) }
+    var deleteRepositories by rememberSaveable { mutableStateOf(false) }
+    var showPermissions by rememberSaveable { mutableStateOf(false) }
     var setupRequired by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
@@ -333,9 +330,7 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
             }
             Spacer(Modifier.height(38.dp))
         }
-        Eyebrow("A NATIVE GITHUB WORKSPACE")
-        Text("Your code.\nWithin reach.", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(top = 20.dp))
-        Text("Browse, build and collaborate.\nA calmer way to work from your phone.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 14.dp, bottom = 24.dp))
+        Text("Sign in to GitHub", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp))
         Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
@@ -359,25 +354,36 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
             TextButton(onClick = { openLink("https://github.com/settings/personal-access-tokens/new") }) { Text("Create a fine-grained token on GitHub") }
             TextButton(onClick = { tokenMode = false; token = "" }) { Text("Back to GitHub sign-in") }
         } else {
-            Text("Connect your workspace", style = MaterialTheme.typography.titleLarge)
             Text("Sign in on GitHub and approve Forge. No password or personal token to paste here.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
             Button(onClick = {
                 if (oauthClientId.isBlank()) setupRequired = true
-                else vm.deviceLogin(oauthClientId, privateRepositories, workflowFiles)
+                else vm.deviceLogin(oauthClientId, privateRepositories, workflowFiles, deleteRepositories)
             }, enabled = !s.busy && !s.authorizing, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(10.dp)) {
                 Icon(Icons.Outlined.OpenInNew, null, Modifier.size(18.dp))
                 Text(if (s.authorizing) "Getting sign-in code…" else "Continue with GitHub", Modifier.padding(start = 8.dp))
             }
             Text("You'll approve a short-lived code in your browser, then return here. Forge never sees your GitHub password.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(privateRepositories, { privateRepositories = it }, enabled = !s.authorizing)
-                Text("Include private repositories", fontSize = 12.sp)
+            TextButton(onClick = { showPermissions = !showPermissions }, enabled = !s.authorizing) {
+                Text(if (showPermissions) "Hide permissions" else "Choose permissions")
             }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(workflowFiles, { workflowFiles = it }, enabled = !s.authorizing)
-                Text("Edit Actions workflow files", fontSize = 12.sp)
+            if (showPermissions) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(privateRepositories, { privateRepositories = it }, enabled = !s.authorizing)
+                    Text("Include private repositories", fontSize = 12.sp)
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(workflowFiles, { workflowFiles = it }, enabled = !s.authorizing)
+                    Text("Edit Actions workflow files", fontSize = 12.sp)
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(deleteRepositories, { deleteRepositories = it }, enabled = !s.authorizing)
+                    Text("Repository deletion", fontSize = 12.sp)
+                }
+                Text("Deletion adds GitHub's delete_repo permission. It does not delete anything now. Every deletion still needs the full owner/repository confirmation and administrator rights.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text("Requests profile, notifications and public-repository read/write access. Private access uses GitHub's broader repo scope only if selected. Some administrative actions need additional permissions.", fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (privateRepositories || workflowFiles || deleteRepositories) Text(
+                "Selected: " + listOfNotNull(if (privateRepositories) "private repositories" else null, if (workflowFiles) "workflow editing" else null, if (deleteRepositories) "repository deletion" else null).joinToString(", "),
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
             if (s.authorizing) TextButton(onClick = vm::cancelLogin) { Text("Cancel sign-in") }
             TextButton(onClick = { tokenMode = true }, enabled = !s.busy && !s.authorizing) { Text("Advanced: connect an existing token") }
         }
@@ -398,13 +404,30 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
 @Composable fun ActionSheet(form: Form, busy: Boolean, onDismiss: () -> Unit, onSubmit: (Map<String, String>) -> Unit) {
     val fields = remember(form) { mutableStateMapOf<String, String>().apply { form.fields.forEach { put(it.key, it.value) } } }
     var confirmation by remember(form) { mutableStateOf("") }
+    val clipboard = LocalClipboardManager.current
     ModalBottomSheet(onDismissRequest = { if(!busy) onDismiss() }) {
         Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
             Text(form.title, style = MaterialTheme.typography.headlineMedium)
             Text(form.warning, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
             form.fields.forEach { field -> OutlinedTextField(fields[field.key].orEmpty(), { fields[field.key] = it }, label = { Text(field.label) }, minLines = if(field.multiline) 3 else 1, maxLines = if(field.multiline) 10 else 1, modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp), enabled = !busy) }
+            if (form.confirmation.isNotBlank()) {
+                Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(10.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(if (form.kind == "deleteRepo") "Repository to delete" else "Confirmation text", style = MaterialTheme.typography.labelSmall)
+                            androidx.compose.foundation.text.selection.SelectionContainer {
+                                Text(form.confirmation, fontFamily = Mono, modifier = Modifier.padding(top = 6.dp))
+                            }
+                        }
+                        IconButton(onClick = { clipboard.setText(AnnotatedString(form.confirmation)) }) {
+                            Icon(Icons.Outlined.ContentCopy, if (form.kind == "deleteRepo") "Copy repository name" else "Copy confirmation text")
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
             if(form.confirmation.isNotBlank()) OutlinedTextField(confirmation, { confirmation = it }, label = { Text("Type ${form.confirmation} to confirm") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), enabled = !busy)
-            Button(onClick = { onSubmit(fields.toMap()) }, enabled = !busy && (form.confirmation.isBlank() || confirmation == form.confirmation), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(9.dp)) { Text(if(busy) "Working…" else "Confirm") }
+            Button(onClick = { onSubmit(fields.toMap() + ("__confirmation" to confirmation)) }, enabled = !busy && (form.confirmation.isBlank() || confirmation == form.confirmation), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(9.dp)) { Text(if(busy) "Working…" else if (form.kind == "deleteRepo") "Delete repository permanently" else "Confirm") }
             TextButton(onClick = onDismiss, enabled = !busy, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Cancel") }
         }
     }

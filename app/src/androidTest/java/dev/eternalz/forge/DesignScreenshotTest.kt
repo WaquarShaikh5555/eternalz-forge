@@ -32,8 +32,7 @@ class DesignScreenshotTest {
     @Test fun signInPaintsAnOpaqueLightSurface() {
         val vm = ForgeViewModel(SecureVault(context))
         compose.setContent { ForgeTheme("Light") { ConnectScreen(ForgeState(), vm, {}) } }
-        compose.onNodeWithText("Your code.\nWithin reach.").assertIsDisplayed()
-        compose.onNodeWithText("Connect your workspace").assertIsDisplayed()
+        compose.onNodeWithText("Sign in to GitHub").assertIsDisplayed()
         compose.onNodeWithText("Continue with GitHub").assertIsDisplayed()
         compose.onNodeWithText("Personal access token").assertDoesNotExist()
         val image = compose.onRoot().captureToImage()
@@ -44,14 +43,14 @@ class DesignScreenshotTest {
     @Test fun workspaceLight() {
         val vm = ForgeViewModel(SecureVault(context))
         compose.setContent { ForgeTheme("Light") { ForgeApp(fixture, vm) } }
-        compose.onNodeWithText("Ready when you are.").assertIsDisplayed()
-        compose.onNodeWithText("studio-kit").assertIsDisplayed()
+        compose.onNodeWithText("Search your GitHub workspace").assertIsDisplayed()
+        compose.onNodeWithText("alexchen/studio-kit").assertIsDisplayed()
         save("workspace-light", compose.onRoot().captureToImage().asAndroidBitmap())
     }
     @Test fun workspaceDarkRemainsOptional() {
         val vm = ForgeViewModel(SecureVault(context))
         compose.setContent { ForgeTheme("Dark") { ForgeApp(fixture.copy(theme = "Dark"), vm) } }
-        compose.onNodeWithText("Ready when you are.").assertIsDisplayed()
+        compose.onNodeWithText("Search your GitHub workspace").assertIsDisplayed()
         save("workspace-dark", compose.onRoot().captureToImage().asAndroidBitmap())
     }
     private data class ScreenshotOutput(val extension: String, val image: Bitmap, val format: Bitmap.CompressFormat, val quality: Int)
