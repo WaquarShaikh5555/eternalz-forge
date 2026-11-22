@@ -56,7 +56,7 @@ class GitHubApi(private val token: String = "", private val transport: ApiTransp
             val raw = bytes.toString(Charsets.UTF_8)
             if (code !in 200..299) {
                 val message = when {
-                    code == 401 -> "Your credential expired or was revoked. Reconnect this account."
+                    code == 401 -> "GitHub rejected the credential saved on this device (HTTP 401). Reconnect this account; the OAuth app may still appear authorized on GitHub."
                     code == 403 && connection.getHeaderField("X-RateLimit-Remaining") == "0" -> "GitHub rate limit reached. Resets at epoch ${connection.getHeaderField("X-RateLimit-Reset")}. Wait before retrying."
                     code == 429 -> "GitHub asked us to slow down. Retry after ${connection.getHeaderField("Retry-After") ?: "a short wait"} seconds."
                     code == 403 -> "GitHub denied this action. Check selected repositories, token permissions, organization SSO and branch rules."

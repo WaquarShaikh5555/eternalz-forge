@@ -45,6 +45,14 @@ private val destinations = listOf(
     val online = rememberOnline()
     var external by remember { mutableStateOf<String?>(null) }
     var leaveEditor by remember { mutableStateOf(false) }
+    var reconnect by remember { mutableStateOf(false) }
+    var reconnectStarted by remember { mutableStateOf(false) }
+    LaunchedEffect(s.authorizing, s.reconnectRequired, s.account?.id) {
+        if (reconnect && s.authorizing) reconnectStarted = true
+        if (reconnectStarted && !s.authorizing && !s.reconnectRequired && s.error == null) {
+            reconnect = false; reconnectStarted = false
+        }
+    }
     fun back() { if (s.screen == Screen.FILE && s.text != s.original) leaveEditor = true else vm.back() }
     BackHandler(enabled = s.account != null && s.screen !in destinations.map { it.screen }) { back() }
     if (s.account == null) {
@@ -83,6 +91,13 @@ private val destinations = listOf(
                 Column(Modifier.padding(padding).fillMaxSize()) {
                     if (s.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                     if (!online) Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh) { Text("Offline · staged drafts are safe on this device", Modifier.fillMaxWidth().padding(12.dp), fontFamily = Mono, fontSize = 11.sp) }
+                    if (s.reconnectRequired) Surface(color = MaterialTheme.colorScheme.errorContainer) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text("Reconnect @${s.account.login}", fontWeight = FontWeight.SemiBold)
+                            Text("GitHub rejected this device's saved credential. Your drafts are preserved; an app listing on GitHub does not validate this credential.", style = MaterialTheme.typography.bodySmall)
+                            TextButton(onClick = { reconnect = true }) { Text("Reconnect GitHub") }
+                        }
+                    }
                     s.error?.let { MessageStrip(it, true, vm::clearError) }
                     s.notice?.let { MessageStrip(it, false, vm::clearError) }
                     when (s.screen) {
@@ -99,6 +114,9 @@ private val destinations = listOf(
                 }
             }
         }
+    }
+    if (reconnect && s.account != null) ModalBottomSheet(onDismissRequest = { reconnect = false }) {
+        ConnectScreen(s, vm, openLink = { external = it }, embedded = true)
     }
     s.updateMessage?.let { message ->
         AlertDialog(onDismissRequest = vm::dismissUpdate, title = { Text("App update") },
@@ -231,7 +249,7 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
         }
         item { Section("Repositories", "View all", onAll) }
         items(s.repositories.take(5), key = { it.fullName }) { repo -> EntryRow(Entry(repo.fullName, repo.description, if (repo.privateRepo) "Private" else "", kind = "repository"), { onRepo(repo.fullName) }) }
-        if(s.repositories.isEmpty() && !s.busy) item { EmptyState("Start something worth building", "Your accessible repositories will appear here. Create one or check your connected permissions.") }
+        if(s.repositories.isEmpty() && !s.busy && !s.reconnectRequired && s.error == null) item { EmptyState("Start something worth building", "For private repositories, reconnect with Include private repositories enabled. Organization SSO or OAuth-app approval may also be required.") }
         item {
             TextButton(onClick = onCreate, modifier = Modifier.padding(horizontal = 12.dp)) {
                 Icon(Icons.Outlined.Add, null, Modifier.size(17.dp)); Text("New repository", Modifier.padding(start = 8.dp), fontSize = 12.sp)
@@ -257,7 +275,7 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
         item { Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) { Text("${repos.size} loaded", fontFamily = Mono, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)); TextButton(onClick = { sort = when(sort) { "Recent" -> "Name"; "Name" -> "Stars"; else -> "Recent" } }) { Text(sort, fontSize = 12.sp) }; IconButton(onClick = { grid = !grid }) { Icon(if(grid) Icons.Outlined.ViewAgenda else Icons.Outlined.GridView, "Toggle list/grid") }; IconButton(onClick = { vm.form(createRepoForm()) }, enabled = !s.busy) { Icon(Icons.Outlined.Add, "Create repository") } } }
         if (grid) items(repos.chunked(2)) { pair -> Row(Modifier.padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { pair.forEach { repo -> Surface(onClick = { vm.openRepository(repo.fullName) }, modifier = Modifier.weight(1f).padding(vertical = 4.dp), shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceContainer) { Column(Modifier.padding(12.dp).heightIn(min = 120.dp)) { Icon(Icons.Outlined.Book, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(10.dp)); Text(repo.name, fontWeight = FontWeight.Medium, maxLines = 2); Text(repo.language.ifBlank { "Repository" } + " · ★ ${repo.stars}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }; if (pair.size == 1) Spacer(Modifier.weight(1f)) } }
         else items(repos, key = { it.fullName }) { repo -> RepoRow(repo) { vm.openRepository(repo.fullName) } }
-        if (repos.isEmpty() && !s.busy) item { EmptyState("No matching repositories", "Filters apply to loaded pages. Load more or search all of GitHub.") }
+        if (repos.isEmpty() && !s.busy && !s.reconnectRequired && s.error == null) item { EmptyState("No matching repositories", "Check filters and loaded pages. For private repositories, reconnect with Include private repositories enabled. Organization SSO policies may also restrict access.") }
         item { TextButton(onClick = vm::more, enabled = !s.busy, modifier = Modifier.fillMaxWidth()) { Text("Load next page") } }
     }
 }
@@ -304,7 +322,7 @@ fun createRepoForm() = Form("createRepo", "New repository", listOf(Field("name",
         item { Row(Modifier.horizontalScroll(rememberScrollState()).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { SmallAction("Gists", Icons.Outlined.Code) { vm.accountList("Gists") }; SmallAction("Contributions", Icons.Outlined.CalendarMonth) { vm.contributions() }; SmallAction("Followers", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Followers") }; SmallAction("Following", Icons.Outlined.PeopleOutline, !s.busy) { vm.accountList("Following") } } }
         item { TextButton(onClick = { vm.form(Form("disconnect", "Disconnect @${s.account!!.login}?", warning = "Removes this account's credential, staged files, pins and recents from this device. Other accounts are untouched. This does NOT revoke access on GitHub; use Manage access or Tokens to revoke it there.", confirmation = s.account.login)) }, modifier = Modifier.padding(12.dp)) { Text("Disconnect this account", color = MaterialTheme.colorScheme.error) } }
         item { UpdateButton(s, vm) }
-        item { Text("ETERNALZ FORGE / 0.3.3\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("ETERNALZ FORGE / 0.3.4\nNative Android. No tracking. No WebViews.", Modifier.padding(20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 

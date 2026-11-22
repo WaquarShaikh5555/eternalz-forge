@@ -174,3 +174,23 @@ checks GitHub administrator permissions, and lets GitHub enforce the final DELET
 No real repository was deleted during development/testing. OAuth without
 `delete_repo`, organization restrictions/SSO, and fine-grained tokens without
 Administration: write can still prevent deletion; these are explained on failure.
+
+## 0.3.4 rejected-session recovery
+
+GitHub's Authorized OAuth Apps listing is an app-level grant, not a live validation
+of the particular token saved on an Android installation. A 401 means GitHub
+rejected that request's credential; Forge cannot infer whether it was revoked,
+expired, replaced, or otherwise invalid. The message no longer claims a definite
+cause. Restored sessions validate `/user` before loading repositories. A 401 sets
+an explicit reconnect-required state with a direct reconnect action; 403/offline
+errors do not. Empty-repository success messages are suppressed on authentication
+or request failure. Private repositories still require the explicit `repo` scope;
+organization SSO/OAuth policy may restrict them independently of token validity.
+
+Reconnection preserves the account's encrypted drafts, pins and recents and does
+not require disconnect/uninstall. A replacement token is saved only after `/user`
+validation. No phone credentials or private content are requested in chat. The
+reported phone failure cannot be diagnosed to a specific token cause from this
+session; no live credential was inspected. Regression tests inject a rejected
+saved credential, validate a replacement and check draft preservation, and
+separately ensure a permission-denied response does not falsely request reauth.

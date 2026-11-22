@@ -16,7 +16,7 @@ data class Form(val kind: String, val title: String, val fields: List<Field> = e
 data class DeviceLogin(val code: String, val uri: String, val expires: Int)
 data class ForgeState(
     val screen: Screen = Screen.HOME, val account: Account? = null, val accounts: List<Account> = emptyList(),
-    val updateMessage: String? = null, val updateUrl: String? = null, val checkingUpdate: Boolean = false,
+    val updateMessage: String? = null, val updateUrl: String? = null, val checkingUpdate: Boolean = false, val reconnectRequired: Boolean = false,
     val busy: Boolean = false, val authorizing: Boolean = false, val error: String? = null, val notice: String? = null,
     val repositories: List<Repository> = emptyList(), val entries: List<Entry> = emptyList(),
     val repo: Repository? = null, val branch: String = "", val path: String = "", val tab: String = "Code", val page: Int = 1,
@@ -27,7 +27,7 @@ data class ForgeState(
     val theme: String = "Light", val recent: List<String> = emptyList(), val pins: List<String> = emptyList(), val compactHome: Boolean = false,
 )
 
-class ForgeViewModel(private val vault: SecureVault, private val authApi: (String) -> GitHubApi = { GitHubApi(it) }) : ViewModel() {
+class ForgeViewModel(private val vault: SecureVault, private val sessionApi: (String) -> GitHubApi = { GitHubApi(it) }, private val authApi: (String) -> GitHubApi = { GitHubApi(it) }) : ViewModel() {
     private val mutable = MutableStateFlow(ForgeState(theme = vault.preference("theme", "Light"), compactHome = vault.preference("compact") == "true"))
     val state = mutable.asStateFlow()
     private var api = GitHubApi()
@@ -39,18 +39,25 @@ class ForgeViewModel(private val vault: SecureVault, private val authApi: (Strin
     init { restore(); resumeLogin() }
     private fun restore() {
         val accounts = vault.accounts(); val account = accounts.firstOrNull { it.id == vault.active() }
-        api = GitHubApi(account?.let { vault.token(it.id) }.orEmpty())
+        api = sessionApi(account?.let { vault.token(it.id) }.orEmpty())
         update { ForgeState(account = account, accounts = accounts, theme = it.theme, compactHome = it.compactHome,
             draft = account?.let { a -> vault.draft(a.id) }, recent = account?.let { a -> vault.recent(a.id) }.orEmpty(), pins = account?.let { a -> vault.pins(a.id) }.orEmpty()) }
-        if (account != null) refresh()
+        if (account != null) work {
+            api.request("GET", "/user")
+            load()
+        }
     }
-    private fun work(block: suspend () -> Unit) {
+    private fun work(checkSession: Boolean = true, block: suspend () -> Unit) {
         job?.cancel(); val epoch = ++generation
         job = viewModelScope.launch {
             update { it.copy(busy = true, error = null, notice = null) }
             try { block(); ensureActive() }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { if (epoch == generation) update { it.copy(error = e.message ?: "Something went wrong. Please refresh and try again.") } }
+            catch (e: Exception) {
+                if (epoch == generation) update { it.copy(
+                    reconnectRequired = it.reconnectRequired || (checkSession && e is ApiFailure && e.status == 401 && it.account != null),
+                    error = e.message ?: "Something went wrong. Please refresh and try again.") }
+            }
             finally { if (epoch == generation) update { it.copy(busy = false) } }
         }
     }
@@ -81,8 +88,8 @@ class ForgeViewModel(private val vault: SecureVault, private val authApi: (Strin
     fun connect(token: String) {
         if (token.isBlank()) return
         cancelLogin()
-        work {
-            val candidate = GitHubApi(token.trim()); val reply = candidate.request("GET", "/user"); val user = reply.value as JSONObject
+        work(checkSession = false) {
+            val candidate = sessionApi(token.trim()); val reply = candidate.request("GET", "/user"); val user = reply.value as JSONObject
             val account = Account(user.getLong("id").toString(), user.text("login"), user.text("name"), reply.scopes)
             vault.connect(account, token.trim()); api = candidate
             update { ForgeState(account = account, accounts = vault.accounts(), busy = true, theme = it.theme, compactHome = it.compactHome, draft = vault.draft(account.id), recent = vault.recent(account.id), pins = vault.pins(account.id)) }
@@ -409,6 +416,9 @@ class ForgeViewModel(private val vault: SecureVault, private val authApi: (Strin
         }
         if (form.kind == "disconnect") { disconnect(); return }
         if (form.kind == "discard") { discard(); return }
+        if (state.value.reconnectRequired) {
+            update { it.copy(error = "Reconnect this account before changing GitHub. Your local drafts are safe.") }; return
+        }
         work {
             val s = state.value; val repo = s.repo; val base = repo?.let { api.repoPath(it.fullName) }.orEmpty()
             fun v(key: String) = values[key].orEmpty().trim()
