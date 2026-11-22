@@ -95,7 +95,7 @@ private val destinations = listOf(
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text("Reconnect @${s.account.login}", fontWeight = FontWeight.SemiBold)
                             Text("GitHub rejected this device's saved credential. Your drafts are preserved; an app listing on GitHub does not validate this credential.", style = MaterialTheme.typography.bodySmall)
-                            TextButton(onClick = { reconnect = true }) { Text("Reconnect GitHub") }
+                            TextButton(onClick = { if (s.screen == Screen.FILE && s.text != s.original) leaveEditor = true else reconnect = true }) { Text("Reconnect GitHub") }
                         }
                     }
                     s.error?.let { MessageStrip(it, true, vm::clearError) }
