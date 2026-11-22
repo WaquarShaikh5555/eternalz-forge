@@ -122,3 +122,18 @@ Publication intentionally skips rather than distribute another incompatible key.
 Old disposable-debug-key installs cannot be upgraded without the old private key.
 See [signing/update status](android-updates.md). Earlier download links in this
 document are historical build evidence, not the new recovery installer.
+
+
+## Latest revision — 0.3.3 decluttering and repository deletion
+
+Commit `ab429d19cb1232453aa02773135822fc0001115b`,
+[CI 44987159847](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44987159847):
+lint, JVM tests/APK assembly and all **ten Android emulator tests passed**. Added
+copyable full owner/repository confirmation, view-model confirmation enforcement,
+repository-target pinning, admin preflight, actionable permission errors and an
+explicit optional `delete_repo` OAuth scope. No live repository deletion was run.
+The cleaner sign-in and workspace light/dark captures were retrieved and visually
+inspected; secondary workspace content/navigation is now progressively disclosed.
+The GitHub integration still returns HTTP 403 on repository Actions-secrets access;
+permanent signing remains blocked. A separate disposable-key test prerelease is
+being published, not a falsely advertised compatible stable update.

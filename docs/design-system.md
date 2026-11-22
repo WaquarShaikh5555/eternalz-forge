@@ -95,5 +95,9 @@ remain summarized). Repository navigation prioritizes Code, Issues and Pull
 requests; less frequent destinations are in More. Repository deletion confirmations
 show the full owner/name and a copy action without auto-confirming destruction.
 
-New screenshots and CI results for this revision are pending; prior captures above
-are historical rather than proof of this revision.
+[CI run 44987159847](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44987159847)
+passed lint, JVM tests, APK assembly and all ten Android emulator tests. The three
+JPEGs in `docs/screenshots/` are now the 0.3.3 fixture captures from that run and
+were visually inspected (sign-in, workspace light, workspace dark). No real private
+account/repository content is shown. Older prose about previous revisions is
+historical; these new images show the simplified default hierarchy.
