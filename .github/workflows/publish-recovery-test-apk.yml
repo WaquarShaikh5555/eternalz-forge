@@ -35,6 +35,15 @@ jobs:
           mv "$RUNNER_TEMP/apk/app-debug.apk" "$apk"
           signer=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           "$signer" verify --verbose --print-certs "$apk"
+          aapt="$(dirname "$signer")/aapt"
+          "$aapt" dump badging "$apk" > "$RUNNER_TEMP/badging.txt"
+          python3 - "$RUNNER_TEMP/badging.txt" <<'PYVERSION'
+          import pathlib,sys
+          line=pathlib.Path(sys.argv[1]).read_text().splitlines()[0]
+          assert "name='dev.eternalz.forge'" in line, line
+          assert "versionCode='7'" in line and "versionName='0.3.4'" in line, line
+          print('::notice title=APK version verified::'+line)
+          PYVERSION
           (cd "$RUNNER_TEMP/apk" && sha256sum eternalz-forge-0.3.4-test.apk > eternalz-forge-0.3.4-test.apk.sha256)
           cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
           TEST BUILD — direct APK with merged session-recovery fixes and clearer authentication errors.
@@ -49,7 +58,13 @@ jobs:
           # Draft metadata was created through the repository connection after the
           # runner token was denied permission to create a release. Upload only;
           # the draft will be published separately after checking both assets.
-          gh release upload v0.3.4-test "$apk" "$apk.sha256"
+          if gh release view v0.3.4-test --json assets --jq '.assets[].name' | grep -qx 'eternalz-forge-0.3.4-test.apk'; then
+            gh release download v0.3.4-test -p eternalz-forge-0.3.4-test.apk -D "$RUNNER_TEMP/published"
+            cmp "$apk" "$RUNNER_TEMP/published/eternalz-forge-0.3.4-test.apk"
+            echo '::notice::Published direct APK matches the version-verified tested artifact byte for byte.'
+          else
+            gh release upload v0.3.4-test "$apk" "$apk.sha256"
+          fi
       - name: Bounded publication diagnostics
         if: failure()
         run: |
