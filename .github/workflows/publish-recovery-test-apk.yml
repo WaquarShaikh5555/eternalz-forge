@@ -17,6 +17,7 @@ jobs:
       - name: Validate tested source and publish direct APK prerelease
         run: |
           set -euo pipefail
+          exec > >(tee "$RUNNER_TEMP/publish.log") 2>&1
           # Fixed successful run, not user-supplied artifacts or an untested rebuild.
           run=44987159847
           sha=ab429d19cb1232453aa02773135822fc0001115b
@@ -46,3 +47,13 @@ jobs:
           NOTES
           # Do not overwrite existing releases or assets.
           gh release create v0.3.3-test "$apk" "$apk.sha256" --target "$sha" --prerelease --title '0.3.3 sign-in recovery TEST APK (not update-compatible)' --notes-file "$RUNNER_TEMP/notes.md"
+      - name: Bounded publication diagnostics
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import os,pathlib
+          path=pathlib.Path(os.environ['RUNNER_TEMP'])/'publish.log'
+          text=path.read_text(errors='replace')[-3500:] if path.exists() else 'No publication log.'
+          text=text.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+          print('::error title=APK publication diagnostic::'+text)
+          PY
