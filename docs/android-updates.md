@@ -70,3 +70,24 @@ both injected device-flow recovery/approval tests. The release job was correctly
 **skipped** because no permanent signing secret exists. The private-key branch of
 the workflow and actual upgrade installation remain unverified until that blocker
 is resolved. No direct download URL is claimed for an unpublished APK.
+
+## Explicitly requested test APK — published separately
+
+The user subsequently requested the APK despite the signing blocker.
+[Publication run 44986584072](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44986584072)
+succeeded, verified the original successful source run/head SHA and APK signature,
+and published the exact tested artifact as a **prerelease**, not a stable update:
+
+https://github.com/WaquarShaikh5555/eternalz-forge/releases/download/v0.3.2-test/eternalz-forge-0.3.2-test.apk
+
+This is 17,286,165 bytes, not a ZIP. Its disposable signing identity is unchanged
+from the tested CI APK. It is explicitly NOT claimed update-compatible with old
+installs or future permanently signed builds. The prerelease has no stable updater
+metadata and is excluded from the in-app update channel. The permanent-key blocker
+is still unresolved. Waiting for the permanent release avoids another migration.
+
+GitHub installation/permission review starts at https://github.com/settings/installations.
+Approving a pending permission request can help only if the integration actually
+requests Actions-secrets permission. Reconnecting alone cannot grant a permission
+the integration does not support/request. No new OAuth app or personal token is
+needed for that permission review; never send credentials in chat.
