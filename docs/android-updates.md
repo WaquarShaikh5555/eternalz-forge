@@ -91,3 +91,15 @@ Approving a pending permission request can help only if the integration actually
 requests Actions-secrets permission. Reconnecting alone cannot grant a permission
 the integration does not support/request. No new OAuth app or personal token is
 needed for that permission review; never send credentials in chat.
+
+
+## 0.3.3 clean UI/deletion test APK
+
+[Direct APK](https://github.com/WaquarShaikh5555/eternalz-forge/releases/download/v0.3.3-test/eternalz-forge-0.3.3-test.apk)
+is now published (17,302,549 bytes), with its SHA-256 sidecar. Source run
+44987159847 passed lint/JVM tests and all ten emulator tests. Publication run
+44987724289 uploaded the verified APK to a pre-created draft, which was then
+published through the repository connection. Runner-side release creation was
+HTTP 403, but upload to the existing draft succeeded. This remains a test
+prerelease with a disposable signing key, not a compatible stable update. The
+Actions-secrets endpoint still returned HTTP 403 after the user changed access.

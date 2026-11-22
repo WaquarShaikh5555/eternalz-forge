@@ -7,7 +7,7 @@ interface, encrypted multi-account storage, real GitHub API operations, a mobile
 code editor and optimistic, non-force multi-file commits. No WebView. No mock data.
 
 > **Verified development build, not a production release.** Android lint, JVM
-> tests and debug APK assembly passed in GitHub Actions. Six Android emulator UI/security tests also pass. Authenticated
+> tests and debug APK assembly passed in GitHub Actions. Ten Android emulator UI/security tests also pass. Authenticated
 > end-to-end behavior still needs testing. Read the
 > [implementation status](docs/implementation-status.md) for exact coverage,
 > missing flows and verification results.
@@ -26,6 +26,23 @@ Light mode is now the default. The sign-in/root background mismatch is fixed,
 and navigation, repository surfaces and onboarding have been redesigned.
 [View the actual emulator screenshots](docs/design-system.md) (test-only sample data).
 Dark mode remains optional; existing explicit appearance preferences are respected.
+
+## Clean UI and deletion — 0.3.3
+
+[Download the direct test APK](https://github.com/WaquarShaikh5555/eternalz-forge/releases/download/v0.3.3-test/eternalz-forge-0.3.3-test.apk)
+(no ZIP). This is a disposable-key **test prerelease**, not an update-compatible
+stable release. Save local drafts before any uninstall, or wait for permanent signing.
+
+The workspace uses compact repository rows with activity/recents collapsed.
+Sign-in permissions and secondary repository tabs are progressively disclosed.
+Deletion shows the full `owner/repository` name with a copy button and still requires
+exact confirmation. For an existing OAuth account, use **You → Reconnect / change
+permissions → Choose permissions → Repository deletion**, then approve on GitHub.
+Repository administrator rights and organization policies are still enforced.
+
+[CI 44987159847](https://github.com/WaquarShaikh5555/eternalz-forge/actions/runs/44987159847)
+passed lint, JVM tests, APK assembly and all ten emulator tests. No real repository
+was deleted during tests. New [screenshots](docs/design-system.md) were inspected.
 
 ## Install and update
 

@@ -83,8 +83,9 @@ the APK.** Token entry remains a clearly labeled advanced/manual fallback only.
   OAuth `repo` is broad and is not per-repository selection. GitHub displays the
   grant for the user to approve; Forge does not silently escalate it.
 - **Edit Actions workflow files** explicitly adds `workflow`.
-- `delete_repo` is not requested. Repository deletion may be denied with this
-  sign-in method. Fine-grained/manual credentials may have different permissions.
+- `delete_repo` is not requested by default. Starting in 0.3.3, Repository deletion
+  explicitly opts into that scope. Existing accounts must reconnect and approve it.
+  Fine-grained/manual credentials may have different permissions.
 - A fine-grained GitHub App with installations and expiring user-token management
   is the longer-term upgrade for selected repositories and fine-grained permissions;
   this change does not falsely claim to implement that separate lifecycle.
