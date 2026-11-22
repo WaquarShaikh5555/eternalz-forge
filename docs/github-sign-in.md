@@ -194,3 +194,11 @@ reported phone failure cannot be diagnosed to a specific token cause from this
 session; no live credential was inspected. Regression tests inject a rejected
 saved credential, validate a replacement and check draft preservation, and
 separately ensure a permission-denied response does not falsely request reauth.
+
+A further lifecycle regression is now explicitly guarded: if the app restarts
+with both an existing account and a pending approved grant, restoring the old
+account must not start a busy session-validation request first. That previously
+could prevent `resumeLogin()` from consuming the saved approval. Pending approval
+now takes precedence at startup; a regression test supplies an old account and a
+saved replacement grant and verifies that only the approved credential is used.
+This is a reproducible code path, not proof it caused this particular phone report.

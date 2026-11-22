@@ -42,7 +42,9 @@ class ForgeViewModel(private val vault: SecureVault, private val sessionApi: (St
         api = sessionApi(account?.let { vault.token(it.id) }.orEmpty())
         update { ForgeState(account = account, accounts = accounts, theme = it.theme, compactHome = it.compactHome,
             draft = account?.let { a -> vault.draft(a.id) }, recent = account?.let { a -> vault.recent(a.id) }.orEmpty(), pins = account?.let { a -> vault.pins(a.id) }.orEmpty()) }
-        if (account != null) work {
+        // A saved approval takes precedence over validating the OLD account token.
+        // Otherwise startup marks itself busy and resumeLogin() skips the pending grant.
+        if (account != null && vault.pendingLogin() == null) work {
             api.request("GET", "/user")
             load()
         }

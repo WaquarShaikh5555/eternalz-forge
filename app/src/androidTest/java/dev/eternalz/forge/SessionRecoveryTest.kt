@@ -38,6 +38,32 @@ class SessionRecoveryTest {
         } finally { vault.disconnect(account.id) }
     }
 
+    @Test fun savedApprovalTakesPrecedenceOverTheOldRejectedSession() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val vault = SecureVault(instrumentation.targetContext)
+        vault.accounts().forEach { vault.disconnect(it.id) }
+        val account = Account("999995", "fixture", "", "public_repo")
+        vault.connect(account, "synthetic-old")
+        vault.pendingLogin(obj("client_id" to "test", "device_code" to "synthetic-device", "user_code" to "TEST-CODE",
+            "deadline" to (System.currentTimeMillis() - 1000), "access_token" to "synthetic-approved"))
+        try {
+            lateinit var vm: ForgeViewModel
+            instrumentation.runOnMainSync {
+                vm = ForgeViewModel(vault,
+                    sessionApi = { GitHubApi(it, ApiTransport { _, _, _ -> error("Old session must not be loaded before saved approval") }) },
+                    authApi = { token -> GitHubApi(token, ApiTransport { _, path, _ ->
+                        assertEquals("synthetic-approved", token)
+                        if (path == "/user") Reply(obj("id" to account.id, "login" to "fixture"), "repo", "100")
+                        else Reply(org.json.JSONArray(), "repo", "100")
+                    }) })
+            }
+            assertFalse(vm.state.value.reconnectRequired)
+            assertEquals("synthetic-approved", vault.token(account.id))
+            assertNull(vault.pendingLogin())
+            assertEquals("repo", vm.state.value.account?.scopes)
+        } finally { vault.pendingLogin(null); vault.disconnect(account.id) }
+    }
+
     @Test fun permissionDeniedDoesNotClaimThatCredentialWasRevoked() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val vault = SecureVault(instrumentation.targetContext)
