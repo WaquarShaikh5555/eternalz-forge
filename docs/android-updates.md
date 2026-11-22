@@ -103,3 +103,22 @@ published through the repository connection. Runner-side release creation was
 HTTP 403, but upload to the existing draft succeeded. This remains a test
 prerelease with a disposable signing key, not a compatible stable update. The
 Actions-secrets endpoint still returned HTTP 403 after the user changed access.
+
+## 0.3.4 session-recovery APK — published
+
+Direct installer:
+https://github.com/WaquarShaikh5555/eternalz-forge/releases/download/v0.3.4-test/eternalz-forge-0.3.4-test.apk
+
+This is the exact APK from successful source run 45051287394 (commit
+87f7e20162714fef50e067065f0be82092d8c9d1), which passed lint/JVM tests, APK
+assembly and thirteen emulator tests before PR #1 merged. Publication run
+45055954744 uploaded the installer; the draft release was then published.
+Verification run 45056021706 checked its Android signature, manifest application
+ID dev.eternalz.forge, versionCode 7, versionName 0.3.4, and downloaded the published
+asset to confirm byte-for-byte equality with the tested artifact.
+
+It remains a signed disposable-debug-key test prerelease. No promise is made of
+in-place compatibility with earlier installations or of fixing the exact user's
+live credential failure. Save local drafts before any uninstall. First try the
+normal installer; if Android rejects it as incompatible, stop rather than erase
+app data automatically. No ZIP extraction is needed for this direct download.
